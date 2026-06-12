@@ -1,0 +1,1808 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Blip Simulator</title>
+<style>
+:root {
+  --bg:     #07070e;
+  --panel:  #0d0d1a;
+  --border: #181828;
+  --accent: #5599ff;
+  --text:   #c8d0ee;
+  --muted:  #445566;
+  --muted2: #2a3040;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Courier New', Courier, monospace;
+  min-height: 100vh;
+  padding: 20px 24px 40px;
+}
+header {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-bottom: 24px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+h1 {
+  font-size: 1.2rem;
+  letter-spacing: 5px;
+  color: var(--accent);
+  text-transform: uppercase;
+}
+.header-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+select, button {
+  background: transparent;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  padding: 6px 14px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.78rem;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  transition: background 0.15s, color 0.15s;
+}
+select {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 5px 10px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+select:focus { border-color: var(--accent); outline: none; }
+button:hover  { background: var(--accent); color: var(--bg); }
+button:active { opacity: 0.7; }
+button:disabled { opacity: 0.3; cursor: not-allowed; }
+.sound-btn {
+  border-color: var(--muted);
+  color: var(--muted);
+  font-size: 0.85rem;
+  padding: 6px 12px;
+}
+.sound-btn.on { border-color: #44ff88; color: #44ff88; }
+
+/* Layout */
+.main-layout {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+.left-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+canvas {
+  display: block;
+  border-radius: 50%;
+  background: #000;
+}
+.eye-stats {
+  font-size: 0.65rem;
+  color: var(--muted);
+  text-align: center;
+  line-height: 1.8;
+  letter-spacing: 0.5px;
+}
+.right-col {
+  flex: 1;
+  min-width: 280px;
+}
+.section {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+}
+.section-title {
+  font-size: 0.62rem;
+  color: var(--muted);
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+.btn-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.btn-grid button {
+  padding: 7px 12px;
+  font-size: 0.72rem;
+  letter-spacing: 1px;
+}
+.status-bar {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 14px;
+  font-size: 0.72rem;
+  color: var(--muted);
+  letter-spacing: 1px;
+  margin-top: 4px;
+}
+.status-bar span { color: #44ff88; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Blip Simulator</h1>
+  </div>
+  <div class="header-right">
+    <label style="font-size:0.72rem;color:var(--muted);letter-spacing:1px">Theme:</label>
+    <select id="themeSelect" onchange="setTheme(this.value)">
+      <option value="0">Cyan</option>
+      <option value="1">Green</option>
+      <option value="2">Purple</option>
+      <option value="3">Orange</option>
+      <option value="4" selected>Red</option>
+    </select>
+    <label style="font-size:0.72rem;color:var(--muted);letter-spacing:1px">Voice:</label>
+    <select id="voicePitch">
+      <option value="0">Deep</option>
+      <option value="1" selected>Normal</option>
+      <option value="2">High</option>
+    </select>
+    <button class="sound-btn" id="soundBtn" onclick="toggleSound()">Sound: OFF</button>
+  </div>
+</header>
+
+<div class="main-layout">
+  <div class="left-col">
+    <canvas id="eyeCanvas" width="240" height="240"></canvas>
+    <div class="eye-stats" id="eyeStats">
+      Neutral<br>
+      eyeX: 120 &nbsp; eyeY: 120<br>
+      pupilR: 30.0 &nbsp; visor: 0.0
+    </div>
+  </div>
+
+  <div class="right-col">
+
+    <div class="section">
+      <div class="section-title">Expressions</div>
+      <div class="btn-grid">
+        <button onclick="play(doHappy)">Happy</button>
+        <button onclick="play(doSad)">Sad</button>
+        <button onclick="play(doMad)">Mad</button>
+        <button onclick="play(doShocked)">Shocked</button>
+        <button onclick="play(doWink)">Wink</button>
+        <button onclick="play(doSuspicious)">Suspicious</button>
+        <button onclick="play(doDeadpan)">Deadpan</button>
+        <button onclick="play(doLove)">Love</button>
+        <button onclick="play(doSmug)">Smug</button>
+        <button onclick="play(doProud)">Proud</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Personality</div>
+      <div class="btn-grid">
+        <button onclick="play(doNervous)">Nervous</button>
+        <button onclick="play(doCurious)">Curious</button>
+        <button onclick="play(doThink)">Think</button>
+        <button onclick="play(doSleepy)">Sleepy</button>
+        <button onclick="play(doAlert)">Alert</button>
+        <button onclick="play(doNod)">Nod</button>
+        <button onclick="play(doScan)">Scan</button>
+        <button onclick="play(doBlink)">Blink</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Idle Micro</div>
+      <div class="btn-grid">
+        <button onclick="play(doZoneOut)">Zone Out</button>
+        <button onclick="play(doStretch)">Stretch</button>
+        <button onclick="play(doProcessing)">Processing</button>
+        <button onclick="play(doSelfTalk)">Self-Talk</button>
+        <button onclick="play(doDoubt)">Doubt</button>
+        <button onclick="play(doRealize)">Realize</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Music &amp; Special</div>
+      <div class="btn-grid">
+        <button onclick="play(doHumZelda)">Hum: Zelda</button>
+        <button onclick="play(doHumPortal)">Hum: Portal</button>
+        <button onclick="play(doHumMario)">Hum: Mario</button>
+        <button onclick="play(doHumTwinkle)">Hum: Twinkle</button>
+        <button onclick="play(doHumBeatbox)">Beatbox</button>
+        <button onclick="play(doLaugh)">Laugh</button>
+        <button onclick="play(doCool)">Cool</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Social &amp; Events</div>
+      <div class="btn-grid">
+        <button onclick="play(doCelebrate)">Celebrate</button>
+        <button onclick="play(doLoseFace)">Lose</button>
+        <button onclick="play(doDrawFace)">Draw</button>
+        <button onclick="play(doGreet)">Greet</button>
+        <button onclick="play(doExcited)">Excited</button>
+        <button onclick="play(doHeard)">Heard</button>
+        <button onclick="play(doActingOut)">Acting Out</button>
+        <button onclick="play(doDissatisfied)">Dissatisfied</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">System &amp; Memory</div>
+      <div class="btn-grid">
+        <button onclick="play(doSecret)">Secret</button>
+        <button onclick="play(doRecording)">Recording</button>
+        <button onclick="play(doBootFail)">Boot Fail</button>
+        <button onclick="play(doPhantomLook)">Phantom</button>
+        <button onclick="play(doMemFlash1)">MemFlash: Shock</button>
+        <button onclick="play(doMemFlash2)">MemFlash: Win</button>
+        <button onclick="play(doMemFlash3)">MemFlash: Loss</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Quirk Tics</div>
+      <div class="btn-grid">
+        <button onclick="play(doTwitchTic)">1 Twitchy</button>
+        <button onclick="play(doRestlessBob)">2 Restless</button>
+        <button onclick="play(doGlitchTic)">3 Glitchy</button>
+        <button onclick="play(doDramaticTic)">4 Dramatic</button>
+        <button onclick="play(doParanoidCheck)">5 Paranoid</button>
+        <button onclick="play(doSleepyDroop)">6 Sleepy</button>
+        <button onclick="play(doHyperBurst)">7 Hyper</button>
+        <button onclick="play(doShyDip)">8 Shy</button>
+        <button onclick="play(doAlmostLove)">9 Lovesick</button>
+        <button onclick="play(doSunBask)">☀ 10 Sun</button>
+        <button onclick="play(doMoonGaze)">☾ 11 Moon</button>
+        <button onclick="play(doHeartbeat)">12 Heartbeat</button>
+        <button onclick="play(doSneeze)">13 Sneeze</button>
+      </div>
+    </div>
+
+    <div class="status-bar" id="statusBar">Status: <span>Idle</span></div>
+
+    <!-- ── Animation Creator ─────────────────────────────────────────── -->
+    <div class="section" id="animCreatorSection">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:0">
+        <button id="animToggleBtn" onclick="toggleAnimCreator()"
+          style="font-size:0.72rem;padding:5px 12px;letter-spacing:1px;text-transform:none;border-color:var(--muted);color:var(--muted)">
+          ▼ Animation Creator
+        </button>
+      </div>
+      <div id="animCreatorBody" style="display:none;margin-top:12px">
+        <!-- top bar -->
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+          <label style="font-size:0.7rem;color:var(--muted)">Name:</label>
+          <input id="animName" type="text" value="my_anim"
+            style="background:var(--bg);border:1px solid var(--border);color:var(--text);
+                   padding:4px 8px;font-family:inherit;font-size:0.72rem;width:120px">
+          <button onclick="previewAnimation()" style="font-size:0.72rem;padding:5px 10px">&#9654; Preview</button>
+          <button onclick="exportArduino()" style="font-size:0.72rem;padding:5px 10px">&#11015; Arduino Code</button>
+          <button onclick="clearKeyframes()" style="font-size:0.72rem;padding:5px 10px;border-color:var(--muted);color:var(--muted)">Clear</button>
+        </div>
+        <!-- keyframe table -->
+        <div style="overflow-x:auto">
+          <table id="kfTable" style="border-collapse:collapse;width:100%;font-size:0.7rem">
+            <thead>
+              <tr style="color:var(--muted);text-align:left">
+                <th style="padding:4px 6px;border-bottom:1px solid var(--border)">#</th>
+                <th style="padding:4px 6px;border-bottom:1px solid var(--border)">Time(ms)</th>
+                <th style="padding:4px 6px;border-bottom:1px solid var(--border)">eyeX</th>
+                <th style="padding:4px 6px;border-bottom:1px solid var(--border)">eyeY</th>
+                <th style="padding:4px 6px;border-bottom:1px solid var(--border)">pupilR</th>
+                <th style="padding:4px 6px;border-bottom:1px solid var(--border)">Visor</th>
+                <th style="padding:4px 6px;border-bottom:1px solid var(--border)">Sound</th>
+                <th style="padding:4px 6px;border-bottom:1px solid var(--border)"></th>
+              </tr>
+            </thead>
+            <tbody id="kfBody"></tbody>
+          </table>
+        </div>
+        <div style="margin-top:8px">
+          <button onclick="addKeyframe()" style="font-size:0.72rem;padding:5px 12px">+ Add Keyframe</button>
+        </div>
+        <!-- arduino export output -->
+        <div id="exportArea" style="display:none;margin-top:10px">
+          <div style="font-size:0.65rem;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">
+            Generated Arduino Code
+          </div>
+          <textarea id="exportCode" readonly
+            style="width:100%;height:220px;background:#050510;border:1px solid var(--border);
+                   color:#adc6ff;font-family:'Courier New',monospace;font-size:0.68rem;
+                   padding:8px;resize:vertical"></textarea>
+          <button onclick="copyExport()" style="margin-top:6px;font-size:0.72rem;padding:5px 12px">Copy</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ── RGB565 helpers ────────────────────────────────────────────────────────────
+const THEMES = [
+  { dark:0x0410, mid:0x3D7D, brt:0x867D, name:'Cyan'   },
+  { dark:0x0220, mid:0x04C0, brt:0x2FE6, name:'Green'  },
+  { dark:0x2009, mid:0x600F, brt:0xC01F, name:'Purple' },
+  { dark:0x4100, mid:0xA280, brt:0xFD00, name:'Orange' },
+  { dark:0x2800, mid:0x7000, brt:0xD000, name:'Red'    },
+];
+function rgb565(c) {
+  const r=(c>>11)&0x1F, g=(c>>5)&0x3F, b=c&0x1F;
+  return `rgb(${(r<<3)|(r>>2)},${(g<<2)|(g>>4)},${(b<<3)|(b>>2)})`;
+}
+
+let themeIdx = 4;  // default Red for Bloop
+function setTheme(idx) { themeIdx = parseInt(idx); }
+
+// ── Geometry constants (firmware defaults) ────────────────────────────────────
+const CX = 120, CY = 120;
+const EYE_R_OUTER = 72;
+const EYE_R_INNER = 54;  // pupil base radius
+const LOOK_X = 20, LOOK_Y = 10;
+const VISOR_W = 156, VISOR_H = 28;
+const SLIT_W = 72, SLIT_H = 10;
+
+// ── Eye state ─────────────────────────────────────────────────────────────────
+let eyeX = CX, eyeY = CY;
+let pupilRTarget = EYE_R_INNER;
+let pupilRf = EYE_R_INNER;
+let visorOffset = 0;
+let upperSlitOffset = -40;
+let breathPhase = 0;
+let animRunning = false;
+// Quirk overlays: Sun rays (0 = none) and Moon crescent shadow (null = none)
+let sunRayLen = 0;
+let moonShadowX = null;
+// Glitchy quirk: colour-inversion flash + raw scan-line artifacts
+let glitchInvert = false;
+let glitchLines = [];   // [{ y, c }] horizontal artifact bars
+// Mad expression: iris flushes red + furrowed angry brow (0..1 intensity)
+let angryRed = false;
+let browAngry = 0;
+
+// ── Canvas setup ──────────────────────────────────────────────────────────────
+const canvas = document.getElementById('eyeCanvas');
+const ctx = canvas.getContext('2d');
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+function drawFrame() {
+  let dark, mid, brt;
+  if (angryRed) {              // Mad: override the palette to angry reds
+    dark = '#3a0000'; mid = '#c00000'; brt = '#ff3a22';
+  } else {
+    const t = THEMES[themeIdx];
+    dark = rgb565(t.dark);
+    mid  = rgb565(t.mid);
+    brt  = rgb565(t.brt);
+  }
+
+  // Breathing pulse — toned right down (matches firmware: barely perceptible)
+  const bOff = Math.sin(breathPhase) * 0.10;
+  const pr = Math.max(8, pupilRf + bOff * 0.04);
+
+  ctx.clearRect(0, 0, 240, 240);
+
+  // Circular clip
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(CX, CY, 120, 0, Math.PI * 2);
+  ctx.clip();
+
+  // Black background
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, 240, 240);
+
+  // Outer glow (dark ring)
+  ctx.beginPath();
+  ctx.arc(eyeX, eyeY, EYE_R_OUTER + 8, 0, Math.PI * 2);
+  ctx.fillStyle = dark;
+  ctx.fill();
+
+  // Mid ring
+  ctx.beginPath();
+  ctx.arc(eyeX, eyeY, EYE_R_OUTER, 0, Math.PI * 2);
+  ctx.fillStyle = mid;
+  ctx.fill();
+
+  // Bright iris
+  ctx.beginPath();
+  ctx.arc(eyeX, eyeY, EYE_R_OUTER - 6, 0, Math.PI * 2);
+  ctx.fillStyle = brt;
+  ctx.fill();
+
+  // Pupil (black center)
+  ctx.beginPath();
+  ctx.arc(eyeX, eyeY, pr, 0, Math.PI * 2);
+  ctx.fillStyle = '#000';
+  ctx.fill();
+
+  // Sun quirk: 8 rays around the iris — a child's drawing of the sun
+  if (sunRayLen > 0) {
+    ctx.fillStyle = brt;
+    for (let i = 0; i < 8; i++) {
+      const a  = i * Math.PI / 4;
+      const rr = EYE_R_OUTER + 13 + sunRayLen / 2;
+      ctx.save();
+      ctx.translate(eyeX + Math.cos(a) * rr, eyeY + Math.sin(a) * rr);
+      ctx.rotate(a);
+      ctx.fillRect(-sunRayLen / 2, -2.5, sunRayLen, 5);
+      ctx.restore();
+    }
+  }
+
+  if (moonShadowX !== null) {
+    // Moon quirk: shadow disc carves the iris into a crescent (no visor/slit)
+    ctx.beginPath();
+    ctx.arc(eyeX + moonShadowX, eyeY - 5, EYE_R_OUTER - 8, 0, Math.PI * 2);
+    ctx.fillStyle = '#000';
+    ctx.fill();
+  } else {
+    // Visor mask (horizontal band across center)
+    const vY = eyeY - VISOR_H / 2 + visorOffset + Math.sin(breathPhase * 0.68) * 0.03;
+    roundRect(ctx, eyeX - VISOR_W/2, vY, VISOR_W, VISOR_H, 14);
+    ctx.fillStyle = '#000';
+    ctx.fill();
+
+    // Upper slit
+    const sY = eyeY + upperSlitOffset + Math.sin(breathPhase) * 0.08;
+    roundRect(ctx, eyeX - SLIT_W/2, sY, SLIT_W, SLIT_H, 5);
+    ctx.fillStyle = '#000';
+    ctx.fill();
+  }
+
+  // Mad expression: furrowed angry brow — two inward-angled bars over the iris top
+  if (browAngry > 0) {
+    ctx.fillStyle = '#000';
+    const bw = 36, bh = 11, off = 23, yb = eyeY - 22, ang = 0.52 * browAngry;
+    ctx.save(); ctx.translate(eyeX - off, yb); ctx.rotate(ang);  ctx.fillRect(-bw/2, -bh/2, bw, bh); ctx.restore();
+    ctx.save(); ctx.translate(eyeX + off, yb); ctx.rotate(-ang); ctx.fillRect(-bw/2, -bh/2, bw, bh); ctx.restore();
+  }
+
+  // Glitchy quirk: raw scan-line artifacts drawn over the eye
+  if (glitchLines.length) {
+    for (const l of glitchLines) { ctx.fillStyle = l.c; ctx.fillRect(0, l.y, 240, 2); }
+  }
+  // Glitchy quirk: hardware colour-inversion flash (difference vs white = invert)
+  if (glitchInvert) {
+    ctx.save();
+    ctx.globalCompositeOperation = 'difference';
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, 240, 240);
+    ctx.restore();
+  }
+
+  ctx.restore();
+
+  // Stats
+  document.getElementById('eyeStats').innerHTML =
+    `eyeX: ${eyeX} &nbsp; eyeY: ${eyeY}<br>` +
+    `pupilR: ${pupilRf.toFixed(1)} &nbsp; visor: ${visorOffset.toFixed(1)}`;
+}
+
+// ── Animation loop (breathing) ────────────────────────────────────────────────
+function rafLoop() {
+  pupilRf += (pupilRTarget - pupilRf) * 0.14;
+  breathPhase += 0.0105;  // ~6 breaths/min at 60fps — slowed & calmed (matches firmware)
+  if (breathPhase > Math.PI * 2) breathPhase -= Math.PI * 2;
+  drawFrame();
+  requestAnimationFrame(rafLoop);
+}
+requestAnimationFrame(rafLoop);
+
+function resetToNeutral() {
+  eyeX = CX; eyeY = CY;
+  pupilRTarget = EYE_R_INNER;
+  visorOffset = 0;
+  upperSlitOffset = -40;
+  sunRayLen = 0;
+  moonShadowX = null;
+  glitchInvert = false;
+  glitchLines = [];
+  angryRed = false;
+  browAngry = 0;
+}
+
+async function play(fn) {
+  if (animRunning) return;
+  animRunning = true;
+  document.querySelectorAll('.btn-grid button').forEach(b => b.disabled = true);
+  try { await fn(); } catch(e) { console.error(e); }
+  finally {
+    animRunning = false;
+    resetToNeutral();
+    document.querySelectorAll('.btn-grid button').forEach(b => b.disabled = false);
+  }
+}
+
+function setStatus(msg) {
+  document.getElementById('statusBar').innerHTML = `Status: <span>${msg}</span>`;
+}
+
+// ── Web Audio ─────────────────────────────────────────────────────────────────
+let audioCtx = null;
+let soundEnabled = false;
+
+function ensureAudio() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+}
+
+function toggleSound() {
+  soundEnabled = !soundEnabled;
+  const btn = document.getElementById('soundBtn');
+  btn.textContent = soundEnabled ? 'Sound: ON' : 'Sound: OFF';
+  btn.className = soundEnabled ? 'sound-btn on' : 'sound-btn';
+  if (soundEnabled) ensureAudio();
+}
+
+function voiceMult() {
+  const v = parseInt(document.getElementById('voicePitch').value);
+  return v === 0 ? 0.65 : v === 2 ? 1.45 : 1.0;
+}
+
+function tone(freq, durMs) {
+  if (!soundEnabled || !audioCtx) return;
+  const vm = voiceMult();
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.connect(gain); gain.connect(audioCtx.destination);
+  osc.type = 'square';
+  osc.frequency.value = freq * vm;
+  gain.gain.setValueAtTime(0.18, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + durMs/1000);
+  osc.start(); osc.stop(audioCtx.currentTime + durMs/1000);
+}
+
+function bend(fromFreq, toFreq, durMs) {
+  if (!soundEnabled || !audioCtx) return;
+  const vm = voiceMult();
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.connect(gain); gain.connect(audioCtx.destination);
+  osc.type = 'square';
+  osc.frequency.setValueAtTime(fromFreq * vm, audioCtx.currentTime);
+  osc.frequency.linearRampToValueAtTime(toFreq * vm, audioCtx.currentTime + durMs/1000);
+  gain.gain.setValueAtTime(0.18, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + durMs/1000);
+  osc.start(); osc.stop(audioCtx.currentTime + durMs/1000);
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// Note constants
+const NOTE = {
+  E3:165, A3:220, B3:247, C4:262, D4:294, E4:330, F4:349,
+  G4:392, A4:440, B4:494, C5:523, D5:587, E5:659, F5:698,
+  G5:784, A5:880, B5:988, C6:1047
+};
+
+// ── Glide helper ──────────────────────────────────────────────────────────────
+function ease(t) { return t*t*(3-2*t); }
+
+async function glide(tx, ty, ms=180) {
+  const fromX = eyeX, fromY = eyeY;
+  const steps = Math.max(1, Math.round(ms / 16));
+  for (let i = 1; i <= steps; i++) {
+    const t = ease(i / steps);
+    eyeX = Math.round(fromX + (tx - fromX) * t);
+    eyeY = Math.round(fromY + (ty - fromY) * t);
+    await sleep(16);
+  }
+  eyeX = tx; eyeY = ty;
+}
+
+// ── drawHappyFace arc ─────────────────────────────────────────────────────────
+function drawHappyArc(override) {
+  // Already drawn by rafLoop; this just temporarily modifies the frame render
+  // For the simulator we track a "face" state
+}
+
+// ── Animations ────────────────────────────────────────────────────────────────
+
+async function doBlink() {
+  setStatus('Blink');
+  tone(NOTE.C5, 12);
+  for (let i = 0; i < 8; i++) { visorOffset += 2; upperSlitOffset += 2; await sleep(12); }
+  await sleep(30);
+  for (let i = 0; i < 8; i++) { visorOffset -= 2; upperSlitOffset -= 2; await sleep(12); }
+}
+
+async function doHappy() {
+  setStatus('Happy');
+  tone(NOTE.E4, 80); await sleep(90);
+  tone(NOTE.G4, 80); await sleep(90);
+  tone(NOTE.C5, 100); await sleep(60);
+  bend(NOTE.G5, NOTE.A5, 120);
+  pupilRTarget = EYE_R_INNER + 7;
+  for (let i = 0; i < 3; i++) {
+    eyeY = CY; await sleep(200);
+    eyeY = CY - 4; await sleep(75);
+    eyeY = CY + 2; await sleep(55);
+  }
+  await sleep(200);
+}
+
+async function doSad() {
+  setStatus('Sad');
+  tone(NOTE.A4, 100); await sleep(110);
+  tone(NOTE.G4, 110); await sleep(120);
+  bend(NOTE.E4, NOTE.C4, 220);
+  pupilRTarget = EYE_R_INNER - 5;
+  // Signature: the gaze FALLS — looks downcast — while the lids sag. The downward look
+  // is the tell vs Sleepy (nods off) and Deadpan (dead-level stare).
+  await glide(CX, CY + 7, 280);
+  for (let i = 0; i < 7; i++) { visorOffset += 1.1; upperSlitOffset += 0.7; await sleep(50); }
+  await sleep(500);
+  for (let i = 0; i < 7; i++) { visorOffset -= 1.1; upperSlitOffset -= 0.7; await sleep(45); }
+  await glide(CX, CY, 240);
+}
+
+async function doMad() {
+  setStatus('Mad');
+  angryRed = true;                          // iris flushes angry red
+  // Buzzy sub-bass growl
+  for (let i = 0; i < 4; i++) { tone(62 + i*9, 20); await sleep(32); }
+  bend(NOTE.G4, NOTE.A3, 90);
+  pupilRTarget = EYE_R_INNER - 11;          // pinched, hostile pupil
+  for (let i = 1; i <= 6; i++) { browAngry = i / 6; await sleep(28); }   // brow furrows in
+  for (let pass = 0; pass < 2; pass++) {
+    const amp = 3 + pass * 4;
+    for (let i = 0; i < 7; i++) {           // trembling with rage
+      eyeX = CX + (Math.random() < 0.5 ? 1 : -1) * (Math.floor(Math.random() * amp) + 1);
+      eyeY = CY + (Math.random() < 0.5 ? 1 : -1) * (Math.floor(Math.random() * amp) + 1);
+      await sleep(38);
+    }
+    if (pass === 0) { for (let i = 0; i < 4; i++) { tone(62 + i*9, 20); await sleep(32); } }
+  }
+  eyeX = CX; eyeY = CY;
+  await sleep(300);
+  for (let i = 6; i >= 0; i--) { browAngry = i / 6; await sleep(22); }   // brow releases
+  angryRed = false;
+}
+
+async function doShocked() {
+  setStatus('Shocked');
+  for (let i = 0; i < 3; i++) { tone(NOTE.A5, 10); await sleep(20); }
+  bend(NOTE.A5, 1300, 92);
+  pupilRTarget = EYE_R_INNER + 11;
+  eyeY = CY + 6; await sleep(55);
+  eyeY = CY - 4; await sleep(55);
+  eyeY = CY;     await sleep(80);
+  await sleep(350);
+  for (let i = 0; i < 2; i++) {
+    pupilRTarget = EYE_R_INNER; await sleep(90);
+    pupilRTarget = EYE_R_INNER + 11; await sleep(240);
+  }
+  await sleep(350);
+}
+
+async function doWink() {
+  setStatus('Wink');
+  tone(NOTE.E5, 15); await sleep(22);
+  tone(NOTE.G5, 15); await sleep(22);
+  tone(NOTE.A5, 19); await sleep(28);
+  tone(NOTE.G5, 13); await sleep(20);
+  eyeX = CX + 9; await sleep(130);
+  eyeX = CX;
+  // Wink squint (asymmetric visor)
+  for (let i = 0; i < 5; i++) { visorOffset += 1.5; await sleep(18); }
+  await sleep(200);
+  for (let i = 0; i < 5; i++) { visorOffset -= 1.5; await sleep(18); }
+  for (let i = 0; i < 4; i++) { visorOffset += 1.5; await sleep(15); }
+  await sleep(150);
+  for (let i = 0; i < 4; i++) { visorOffset -= 1.5; await sleep(16); }
+}
+
+async function doSuspicious() {
+  setStatus('Suspicious');
+  bend(NOTE.E5, NOTE.C5, 185); await sleep(200);
+  tone(NOTE.B4, 42); await sleep(55);
+  pupilRTarget = EYE_R_INNER - 9;
+  upperSlitOffset = -24;                     // squint
+  // Signature: darts between corners — checking, checking — never settling. The quick
+  // back-and-forth scan is what separates it from Smug/Cool's single held pose.
+  await glide(CX + 13, CY - 3, 90);  await sleep(180);
+  await glide(CX - 13, CY - 3, 110); await sleep(180);
+  await glide(CX + 9,  CY - 2, 90);  await sleep(150);
+  await glide(CX, CY, 120);
+  upperSlitOffset = -40;
+}
+
+async function doDeadpan() {
+  setStatus('Deadpan');
+  tone(NOTE.A3, 82); await sleep(95);
+  eyeX = CX; eyeY = CY;
+  pupilRTarget = EYE_R_INNER;
+  // Signature: dead-level, motionless stare for a long beat, then ONE slow, unimpressed
+  // blink, then back to stillness. No droop, no movement — flatness is the whole point.
+  await sleep(1100);
+  for (let i = 0; i < 8; i++) { visorOffset += 2.2; await sleep(40); }   // slow lids down
+  await sleep(220);
+  for (let i = 0; i < 8; i++) { visorOffset -= 2.2; await sleep(48); }   // slow lids up
+  await sleep(750);
+}
+
+async function doLove() {
+  setStatus('Love');
+  tone(NOTE.E4, 92); await sleep(100);
+  tone(NOTE.G4, 92); await sleep(100);
+  tone(NOTE.C5, 92); await sleep(100);
+  bend(NOTE.E5, NOTE.A5, 160);
+  pupilRTarget = EYE_R_INNER + 10;
+  // Draw heart shape via visor animation + pupil
+  visorOffset = -12; await sleep(400);
+  eyeY = CY - 8; await sleep(350);
+  eyeY = CY - 4; await sleep(120);
+  eyeY = CY - 8; await sleep(400);
+  eyeY = CY;
+  visorOffset = 0;
+  await sleep(300);
+}
+
+async function doSmug() {
+  setStatus('Smug');
+  tone(NOTE.A5, 12); await sleep(16);
+  tone(NOTE.C6, 16); await sleep(22);
+  pupilRTarget = EYE_R_INNER - 5;
+  // Signature: looks DOWN-the-nose (up + aside) with a half-lowered lid, gives a tiny
+  // "hmph" nudge, holds the cocky angle. Quick & smug vs Cool's slow lean.
+  visorOffset = 5;                          // lid drops to a smirk
+  await glide(CX + 7, CY - 6, 200);
+  await sleep(110);
+  eyeY -= 2; await sleep(90); eyeY += 2;    // hmph
+  await sleep(520);
+  visorOffset = 0;
+  await glide(CX, CY, 200);
+}
+
+async function doProud() {
+  setStatus('Proud');
+  tone(NOTE.G4, 42); await sleep(50);
+  tone(NOTE.C5, 42); await sleep(50);
+  tone(NOTE.E5, 42); await sleep(50);
+  bend(NOTE.G5, NOTE.C6, 120);
+  pupilRTarget = EYE_R_INNER + 6;          // puffed up
+  // Signature: a single slow, majestic rise — then HOLD high and steady (chest out),
+  // no bouncing. This is what sets it apart from Happy (bouncy) and Laugh (shaky).
+  await glide(CX, CY - 10, 320);
+  await sleep(950);                        // hold the proud pose, barely a flicker
+  await glide(CX, CY, 280);
+  await sleep(200);
+}
+
+async function doNervous() {
+  setStatus('Nervous');
+  const freqs = [NOTE.E5, NOTE.G5, NOTE.E5, NOTE.A5, NOTE.G5, NOTE.E5];
+  for (let i = 0; i < 6; i++) { tone(freqs[i], 11); await sleep(22 + (i%3)*12); }
+  upperSlitOffset = -58; visorOffset = -4;
+  for (let i = 0; i < 7; i++) {
+    eyeX = CX + (Math.random() < 0.5 ? 1 : -1) * Math.floor(Math.random() * LOOK_X + 1);
+    eyeY = CY + (Math.random() < 0.5 ? 1 : -1) * Math.floor(Math.random() * LOOK_Y + 1);
+    await sleep(50 + Math.floor(Math.random() * 25));
+  }
+  await glide(CX, CY, 120);
+}
+
+async function doCurious() {
+  setStatus('Curious');
+  bend(NOTE.G4, NOTE.D5, 115); await sleep(130);
+  bend(NOTE.C5, NOTE.E5, 72);
+  visorOffset = -2; upperSlitOffset = -24;
+  await sleep(400);
+  await glide(CX + 14, CY - 4, 150);
+  await sleep(500);
+  await glide(CX, CY, 180);
+}
+
+async function doThink() {
+  setStatus('Think');
+  bend(NOTE.C4, NOTE.G4, 185); await sleep(200);
+  bend(NOTE.G4, NOTE.E4, 95); await sleep(100);
+  tone(NOTE.C5, 68); await sleep(80);
+  visorOffset = -2; upperSlitOffset = -24;
+  await glide(CX - 10, CY - 14, 220);
+  for (let i = 0; i < 4; i++) {
+    const dx = Math.floor(Math.random() * 5) - 2;
+    const dy = Math.floor(Math.random() * 3) - 1;
+    eyeX += dx; eyeY += dy; await sleep(110);
+    eyeX -= dx; eyeY -= dy; await sleep(70);
+  }
+  await sleep(350);
+  await glide(CX, CY, 200);
+}
+
+async function doSleepy() {
+  setStatus('Sleepy');
+  bend(NOTE.G4, NOTE.C4, 370);
+  visorOffset = 8; upperSlitOffset = -15;
+  // Signature: nodding off — lids sink and the eye dips down, then JERKS awake with a
+  // little pip — twice. The repeated drift-and-catch is the giveaway vs Sad/Deadpan.
+  for (let n = 0; n < 2; n++) {
+    for (let i = 0; i < 7; i++) { visorOffset += 1.6; eyeY += 1; await sleep(55); }   // drifting under
+    eyeY = CY;
+    for (let i = 0; i < 7; i++) { visorOffset -= 1.6; await sleep(16); }               // jerks awake
+    tone(NOTE.C5, 16); await sleep(120);
+  }
+}
+
+async function doAlert() {
+  setStatus('Alert');
+  tone(NOTE.A5, 20); await sleep(26);
+  tone(NOTE.A5, 38); await sleep(44);
+  tone(NOTE.A5, 16); await sleep(22);
+  upperSlitOffset = -58; visorOffset = -4;
+  await sleep(700);
+}
+
+async function doNod() {
+  setStatus('Nod');
+  await glide(eyeX, CY - 8, 140);
+  await sleep(120);
+  await glide(eyeX, CY + 4, 110);
+  await sleep(80);
+  await glide(eyeX, CY, 130);
+}
+
+async function doScan() {
+  setStatus('Scan');
+  upperSlitOffset = -58; visorOffset = -4;
+  await glide(CX - LOOK_X, CY, 170);
+  await sleep(280);
+  await glide(CX + LOOK_X, CY, 260);
+  await sleep(280);
+  await glide(CX, CY, 170);
+}
+
+async function doZoneOut() {
+  setStatus('Zone Out');
+  bend(NOTE.E5, NOTE.C4, 600); await sleep(700);
+  const driftX = CX + Math.floor(Math.random() * 25) - 12;
+  const driftY = CY + Math.floor(Math.random() * 17) - 8;
+  for (let i = 0; i < 6; i++) {
+    eyeX += (driftX - eyeX) > 0 ? 1 : -1;
+    eyeY += (driftY - eyeY) > 0 ? 1 : -1;
+    visorOffset += 0.18;
+    await sleep(120);
+  }
+  await sleep(600);
+  eyeX = CX; eyeY = CY; visorOffset = 0;
+  pupilRTarget = EYE_R_INNER + 5;
+  await sleep(80);
+}
+
+async function doStretch() {
+  setStatus('Stretch');
+  for (let i = 0; i < 5; i++) { visorOffset += 0.7; upperSlitOffset += 0.4; await sleep(40); }
+  await sleep(300);
+  visorOffset = 0; upperSlitOffset = 0;
+  pupilRTarget = EYE_R_INNER + 8;
+  await sleep(60);
+  pupilRTarget = EYE_R_INNER - 2;
+  await sleep(80);
+}
+
+async function doProcessing() {
+  setStatus('Processing');
+  const steps = [-6, 4, -3, 5, -4, 3, 0];
+  for (let i = 0; i < 7; i++) {
+    eyeX = CX + steps[i];
+    if (soundEnabled && audioCtx) tone(900 + i * 80, 18);
+    await sleep(55);
+  }
+  eyeX = CX;
+}
+
+async function doSelfTalk() {
+  setStatus('Self-Talk');
+  await glide(CX - 8, CY - 6, 200);
+  // Signature: gazes away and mutters — small rhythmic nods paired with quiet syllable
+  // blips, like it's working something out under its breath. Think = still ponder; this = chatter.
+  for (let i = 0; i < 5; i++) {
+    tone(i % 2 ? NOTE.B3 : NOTE.A3, 10);
+    eyeY -= 3; await sleep(90);
+    eyeY += 3; await sleep(110);
+  }
+  await sleep(200);
+  await glide(CX, CY, 180);
+}
+
+async function doDoubt() {
+  setStatus('Doubt');
+  bend(NOTE.C5, NOTE.E5, 80);
+  await glide(CX + 9, CY + 2, 220);
+  // Signature: one skeptical brow-raise (slit lifts) held while side-eyeing — "...really?"
+  for (let i = 0; i < 5; i++) { upperSlitOffset -= 2.4; await sleep(30); }   // brow arches up
+  await sleep(480);
+  for (let i = 0; i < 5; i++) { upperSlitOffset += 2.4; await sleep(35); }
+  await glide(CX, CY, 200);
+}
+
+async function doRealize() {
+  setStatus('Realize');
+  // Signature: a blank beat, then a sudden "aha!" pop — pupil blows wide + a sharp snap
+  // UP with a bright two-note ping. The suddenness sets it apart from the slow glances.
+  await sleep(260);
+  pupilRTarget = EYE_R_INNER + 12;
+  await glide(CX, CY - 9, 80);              // snap up
+  tone(NOTE.C5, 30); await sleep(45); tone(NOTE.E5, 45);
+  await sleep(120);
+  eyeY = CY; await sleep(60);
+  pupilRTarget = EYE_R_INNER;
+  await sleep(160);
+}
+
+async function doLaugh() {
+  setStatus('Laugh');
+  pupilRTarget = EYE_R_INNER + 6;
+  // Signature: fast, small staccato shakes with a side-to-side wobble — hah-hah-hah —
+  // much quicker and twitchier than Happy's slow bounce or Proud's still hold.
+  const notes = [NOTE.E5, NOTE.G5, NOTE.A5, NOTE.C6];
+  for (let i = 0; i < 7; i++) {
+    tone(notes[i % 4], 10);
+    eyeY = CY - 6; eyeX = CX + (i % 2 ? 2 : -2); await sleep(60);   // quick up + wobble
+    eyeY = CY + 2; eyeX = CX;                    await sleep(55);   // quick down
+  }
+  eyeY = CY; eyeX = CX;
+  await sleep(150);
+}
+
+async function doCool() {
+  setStatus('Cool');
+  bend(NOTE.A5, NOTE.E5, 160); await sleep(200);
+  tone(NOTE.G5, 45); await sleep(55);
+  pupilRTarget = EYE_R_INNER - 3;
+  // Signature: "shades" slide down (lids lower halfway), then a slow, relaxed lean
+  // and an unhurried return. Everything is smooth & lazy — the opposite of Suspicious.
+  for (let i = 0; i < 6; i++) { visorOffset += 1.2; await sleep(40); }   // shades down
+  await sleep(300);
+  const dir = Math.random() < 0.5 ? 1 : -1;
+  await glide(CX + dir * 9, CY, 520);       // slow lean
+  await sleep(520);
+  await glide(CX, CY, 520);                  // slow return
+  for (let i = 0; i < 6; i++) { visorOffset -= 1.2; await sleep(45); }
+}
+
+// ── Hum helper ────────────────────────────────────────────────────────────────
+async function humNote(freq, durMs) {
+  if (soundEnabled && audioCtx) tone(freq, durMs);
+  eyeX = CX + Math.floor(Math.random() * 5) - 2;
+  await sleep(durMs + 8);
+}
+async function humRest(ms) {
+  eyeX = CX;
+  await sleep(ms);
+}
+
+async function doHumZelda() {
+  setStatus('Hum: Zelda — Song of Storms');
+  visorOffset = 3; upperSlitOffset = -36;
+  pupilRTarget = EYE_R_INNER - 3;
+  await humNote(NOTE.D4, 165); await humNote(NOTE.F4, 165); await humNote(NOTE.D5, 330); await humRest(80);
+  await humNote(NOTE.D4, 165); await humNote(NOTE.F4, 165); await humNote(NOTE.D5, 330); await humRest(80);
+  await humNote(NOTE.E5, 440); await humNote(NOTE.F5, 165); await humNote(NOTE.E5, 165);
+  await humNote(NOTE.F5, 165); await humNote(NOTE.E5, 165); await humNote(NOTE.C5, 165); await humNote(NOTE.A4, 330);
+  await humRest(80);
+  await humNote(NOTE.A4, 165); await humNote(NOTE.B4, 165); await humNote(NOTE.C5, 165);
+  await humNote(NOTE.D5, 330); await humRest(200);
+}
+
+async function doHumPortal() {
+  setStatus('Hum: Portal — Still Alive');
+  visorOffset = 3; upperSlitOffset = -36;
+  pupilRTarget = EYE_R_INNER - 3;
+  await humNote(NOTE.G4, 330); await humNote(NOTE.G4, 330); await humNote(NOTE.G4, 330); await humRest(80);
+  await humNote(NOTE.F4, 330); await humNote(NOTE.E4, 165); await humNote(NOTE.F4, 165); await humNote(NOTE.G4, 330);
+  await humRest(80);
+  await humNote(NOTE.C4, 330); await humNote(NOTE.C4, 330); await humNote(NOTE.D4, 165); await humNote(NOTE.C4, 165);
+  await humNote(NOTE.B3, 660); await humRest(120);
+  await humNote(NOTE.G4, 330); await humNote(NOTE.F4, 165); await humNote(NOTE.E4, 165); await humNote(NOTE.F4, 330);
+  await humNote(NOTE.E4, 165); await humNote(NOTE.D4, 165); await humNote(NOTE.C4, 660); await humRest(200);
+}
+
+async function doHumMario() {
+  setStatus('Hum: Mario Bros');
+  visorOffset = 3; upperSlitOffset = -36;
+  pupilRTarget = EYE_R_INNER - 3;
+  await humNote(NOTE.E5, 165); await humRest(165); await humNote(NOTE.E5, 165); await humRest(165);
+  await humNote(NOTE.E5, 165); await humRest(165); await humNote(NOTE.C5, 165); await humNote(NOTE.E5, 330);
+  await humNote(NOTE.G5, 330); await humRest(330); await humNote(NOTE.G4, 330); await humRest(330);
+  await humNote(NOTE.C5, 330); await humRest(165); await humNote(NOTE.G4, 165); await humRest(165);
+  await humNote(NOTE.E4, 330); await humNote(NOTE.A4, 330); await humNote(NOTE.B4, 330);
+  await humNote(NOTE.A4, 330); await humNote(NOTE.G4, 220); await humNote(NOTE.E5, 220);
+  await humNote(NOTE.G5, 220); await humNote(NOTE.A5, 330); await humRest(200);
+}
+
+async function doHumTwinkle() {
+  setStatus('Hum: Twinkle Twinkle');
+  visorOffset = 3; upperSlitOffset = -36;
+  pupilRTarget = EYE_R_INNER - 3;
+  await humNote(NOTE.C4, 330); await humNote(NOTE.C4, 330); await humNote(NOTE.G4, 330); await humNote(NOTE.G4, 330);
+  await humNote(NOTE.A4, 330); await humNote(NOTE.A4, 330); await humNote(NOTE.G4, 660); await humRest(80);
+  await humNote(NOTE.F4, 330); await humNote(NOTE.F4, 330); await humNote(NOTE.E4, 330); await humNote(NOTE.E4, 330);
+  await humNote(NOTE.D4, 330); await humNote(NOTE.D4, 330); await humNote(NOTE.C4, 660); await humRest(80);
+}
+
+// ── Beatbox ───────────────────────────────────────────────────────────────────
+async function bb_K() {
+  if (soundEnabled && audioCtx) {
+    tone(380, 8); await sleep(10); tone(220, 8); await sleep(10); tone(90, 12); await sleep(12);
+  }
+  eyeY = CY + 1; await sleep(168); eyeY = CY;
+}
+async function bb_S() {
+  if (soundEnabled && audioCtx) {
+    tone(440, 5); await sleep(4); tone(880, 5); await sleep(4); tone(440, 5); await sleep(4); tone(660, 5); await sleep(4);
+  }
+  eyeX = CX + (Math.random() < 0.5 ? 1 : 0); await sleep(214); eyeX = CX;
+}
+async function bb_H() {
+  if (soundEnabled && audioCtx) tone(3200, 4);
+  await sleep(246);
+}
+async function bb_O() {
+  if (soundEnabled && audioCtx) tone(2600, 10);
+  await sleep(242);
+}
+async function bb_R() { await sleep(250); }
+
+async function doHumBeatbox() {
+  setStatus('Beatbox');
+  visorOffset = 3; upperSlitOffset = -36;
+  pupilRTarget = EYE_R_INNER - 2;
+  const pattern = Math.floor(Math.random() * 3);
+  if (pattern === 0) {
+    // Rock
+    await bb_K(); await bb_H(); await bb_S(); await bb_H(); await bb_K(); await bb_H(); await bb_S(); await bb_H();
+    await bb_K(); await bb_H(); await bb_S(); await bb_H(); await bb_K(); await bb_H(); await bb_S(); await bb_H();
+  } else if (pattern === 1) {
+    // Boom-Bap
+    await bb_K(); await bb_H(); await bb_S(); await bb_H(); await bb_H(); await bb_K(); await bb_S(); await bb_H();
+    await bb_K(); await bb_H(); await bb_S(); await bb_H(); await bb_H(); await bb_K(); await bb_S(); await bb_H();
+  } else {
+    // Funky
+    await bb_K(); await bb_H(); await bb_K(); await bb_S(); await bb_O(); await bb_H(); await bb_K(); await bb_S();
+    await bb_K(); await bb_H(); await bb_K(); await bb_S(); await bb_O(); await bb_H(); await bb_K(); await bb_S();
+  }
+}
+
+// ── Social & Events ───────────────────────────────────────────────────────────
+
+async function doCelebrate() {
+  setStatus('Celebrate');
+  tone(NOTE.C5, 60); await sleep(70); tone(NOTE.E5, 60); await sleep(70);
+  tone(NOTE.G5, 60); await sleep(70); tone(NOTE.C6, 100); await sleep(110);
+  tone(NOTE.G5, 40); await sleep(50); tone(NOTE.C6, 140); await sleep(160);
+  pupilRTarget = EYE_R_INNER + 9;
+  for (let i = 0; i < 5; i++) {
+    eyeY = CY; await sleep(80);
+    eyeY = CY - 9; await sleep(70);
+    eyeY = CY + 3; await sleep(55);
+    eyeY = CY;
+    if (i === 2) { tone(NOTE.C5, 40); await sleep(50); tone(NOTE.C6, 80); await sleep(90); }
+  }
+  pupilRTarget = EYE_R_INNER + 6; await sleep(380);
+}
+
+async function doLoseFace() {
+  setStatus('Lose');
+  bend(NOTE.G4, NOTE.C4, 300); await sleep(350);
+  bend(NOTE.E4, NOTE.A3, 200);
+  pupilRTarget = EYE_R_INNER - 7;
+  for (let i = 0; i < 6; i++) { visorOffset += 1.3; upperSlitOffset += 0.9; await sleep(55); }
+  eyeY = CY + 5; await sleep(600);
+  for (let i = 0; i < 10; i++) { visorOffset += 0.7; upperSlitOffset += 1.3; await sleep(30); }
+  await sleep(300);
+  for (let i = 0; i < 10; i++) { visorOffset -= 0.7; upperSlitOffset -= 1.3; await sleep(38); }
+  eyeY = CY; await sleep(500);
+  for (let i = 0; i < 6; i++) { visorOffset -= 1.3; upperSlitOffset -= 0.9; await sleep(50); }
+}
+
+async function doDrawFace() {
+  setStatus('Draw');
+  tone(NOTE.E4, 60); await sleep(70); tone(NOTE.G4, 60); await sleep(70);
+  tone(NOTE.E4, 40); await sleep(50); tone(NOTE.G4, 40); await sleep(50);
+  await sleep(500);
+  await glide(CX - LOOK_X, CY, 130); await sleep(280);
+  await glide(CX + LOOK_X, CY, 130); await sleep(280);
+  await glide(CX, CY, 150); await sleep(300);
+}
+
+async function doGreet() {
+  setStatus('Greet');
+  pupilRTarget = EYE_R_INNER + 7;
+  tone(NOTE.E4, 80); await sleep(90); tone(NOTE.G4, 80); await sleep(90); tone(NOTE.C5, 100); await sleep(80);
+  eyeY = CY; await sleep(170);
+  eyeY = CY - 4; await sleep(80);
+  eyeY = CY; await sleep(150);
+  eyeX = CX + 9; await sleep(130); eyeX = CX;
+  await sleep(180);
+}
+
+async function doExcited() {
+  setStatus('Excited');
+  pupilRTarget = EYE_R_INNER + 9;
+  tone(NOTE.E5, 60); await sleep(70); tone(NOTE.G5, 60); await sleep(70);
+  tone(NOTE.E5, 60); await sleep(70); tone(NOTE.G5, 60); await sleep(70);
+  for (let i = 0; i < 4; i++) {
+    eyeY = CY; await sleep(85);
+    eyeY = CY - 5; await sleep(60);
+    eyeY = CY + 2; await sleep(50);
+    eyeY = CY;
+  }
+}
+
+async function doHeard() {
+  setStatus('Heard');
+  tone(NOTE.A5, 20); await sleep(26); tone(NOTE.A5, 38); await sleep(44); tone(NOTE.A5, 16); await sleep(22);
+  upperSlitOffset = -58; visorOffset = -4; pupilRTarget = EYE_R_INNER - 8;
+  await glide(CX + LOOK_X, CY, 85); await sleep(160);
+  await glide(CX - LOOK_X, CY, 100); await sleep(160);
+  await glide(CX, CY - LOOK_Y, 85); await sleep(200);
+  await glide(CX, CY, 130);
+  visorOffset = -2; pupilRTarget = EYE_R_INNER - 8;
+  await sleep(600);
+}
+
+async function doActingOut() {
+  setStatus('Acting Out');
+  tone(NOTE.A5, 20); await sleep(26); tone(NOTE.A5, 38); await sleep(44);
+  pupilRTarget = EYE_R_INNER - 10;
+  for (let i = 0; i < 2; i++) {
+    await sleep(180);
+    eyeX = CX + Math.floor(Math.random() * 9) - 4;
+    await sleep(90);
+  }
+  eyeX = CX;
+  bend(NOTE.A3, NOTE.G4, 90); await sleep(100);
+  pupilRTarget = EYE_R_INNER - 10; await sleep(350);
+  // Sulk
+  pupilRTarget = EYE_R_INNER; await sleep(700);
+}
+
+async function doDissatisfied() {
+  setStatus('Dissatisfied');
+  bend(NOTE.E5, NOTE.C5, 185); await sleep(200); tone(NOTE.B4, 42); await sleep(55);
+  visorOffset = -2; upperSlitOffset = -24; pupilRTarget = EYE_R_INNER - 7;
+  for (let i = 0; i < 3; i++) {
+    await sleep(260);
+    eyeX += Math.floor(Math.random() * 5) - 2;
+  }
+  eyeX = CX;
+}
+
+// ── System & Memory ───────────────────────────────────────────────────────────
+
+async function doSecret() {
+  setStatus('Secret');
+  for (let i = 0; i < 5; i++) { tone(400 + i * 300, 14); await sleep(22); }
+  pupilRTarget = EYE_R_INNER + 11; await sleep(150);
+  pupilRTarget = EYE_R_INNER + 7;  await sleep(120);
+  pupilRTarget = EYE_R_INNER - 11; visorOffset += 4; await sleep(110);
+  pupilRTarget = EYE_R_INNER - 5;  visorOffset -= 4; await sleep(120);
+  pupilRTarget = EYE_R_INNER + 11; await sleep(150);
+  await sleep(400);
+}
+
+async function doRecording() {
+  setStatus('Recording');
+  for (let i = 0; i < 6; i++) {
+    tone(NOTE.B5, 14); await sleep(20);
+    pupilRTarget = EYE_R_INNER + 8; await sleep(180);
+    pupilRTarget = EYE_R_INNER - 4; await sleep(120);
+  }
+}
+
+async function doBootFail() {
+  setStatus('Boot Fail');
+  bend(NOTE.C5, 80, 200);
+  for (let i = 0; i < 4; i++) {
+    pupilRTarget = EYE_R_INNER + Math.floor(Math.random() * 20) - 8;
+    visorOffset = Math.floor(Math.random() * 12) - 4;
+    await sleep(120);
+    // Flash black
+    const savedPR = pupilRTarget, savedVO = visorOffset;
+    pupilRTarget = 0; visorOffset = 0; await sleep(70);
+    pupilRTarget = savedPR; visorOffset = savedVO;
+  }
+  visorOffset = 0; pupilRTarget = EYE_R_INNER - 3; await sleep(500);
+}
+
+async function doPhantomLook() {
+  setStatus('Phantom Look');
+  await glide(CX + LOOK_X, CY, 200); await sleep(400);
+  await glide(CX - LOOK_X, CY, 240); await sleep(380);
+  await glide(CX, CY, 180); await sleep(150);
+  pupilRTarget = EYE_R_INNER - 5;
+  eyeY = CY + 4; visorOffset += 2.5; await sleep(350);
+  eyeY = CY; visorOffset -= 2.5;
+}
+
+async function doMemFlash1() {  // shocked: notification memory
+  setStatus('MemFlash: Shock');
+  pupilRTarget = EYE_R_INNER + 11; await sleep(420);
+}
+async function doMemFlash2() {  // proud: win memory
+  setStatus('MemFlash: Win');
+  pupilRTarget = EYE_R_INNER + 6; eyeY = CY - 5; await sleep(420); eyeY = CY;
+}
+async function doMemFlash3() {  // sad: loss memory
+  setStatus('MemFlash: Loss');
+  pupilRTarget = EYE_R_INNER - 5; eyeY = CY + 4; visorOffset += 2;
+  await sleep(420);
+  eyeY = CY; visorOffset -= 2;
+}
+
+// ── Quirk tics ────────────────────────────────────────────────────────────────
+
+// 1 Twitchy — involuntary spasm: jolt to an extreme corner, snap back, confused blink
+async function doTwitchTic() {
+  setStatus('Quirk: Twitchy');
+  tone(NOTE.A5, 9); await sleep(11); tone(NOTE.D5, 7); await sleep(8);
+  const jx = CX + (Math.random() < 0.5 ? (LOOK_X + 10) : -(LOOK_X + 10));
+  const jy = CY + (Math.random() < 0.5 ? (LOOK_Y + 6)  : -(LOOK_Y + 6));
+  eyeX = jx; eyeY = jy; await sleep(16);   // snap out
+  eyeX = CX; eyeY = CY; await sleep(10);   // snap back
+  await doBlink();                          // confused recovery
+}
+
+// 2 Restless — can't sit still: foot-tapping bobs, then a pacing left-right glance
+async function doRestlessBob() {
+  setStatus('Quirk: Restless');
+  tone(NOTE.C5, 10); await sleep(21); tone(NOTE.E5, 10); await sleep(21); tone(NOTE.G5, 10); await sleep(14);
+  for (let i = 0; i < 4; i++) { eyeY = CY - 4; await sleep(58); eyeY = CY + 2; await sleep(48); }
+  eyeY = CY;
+  await glide(CX - LOOK_X, CY, 85);     await sleep(70);
+  await glide(CX + LOOK_X, CY, 85);     await sleep(70);
+  await glide(CX - LOOK_X / 2, CY, 70); await sleep(55);
+  await glide(CX, CY, 110);
+}
+
+// 3 Glitchy — short circuit: eye scatters, colour inverts, scan-lines tear across, recovers
+async function doGlitchTic() {
+  setStatus('Quirk: Glitchy');
+  for (let i = 0; i < 14; i++) { tone(180 + Math.random() * 2020, 7 + Math.random() * 10); await sleep(3 + Math.random() * 9); }
+  // Phase 1: position corruption — eye scatters everywhere
+  for (let i = 0; i < 9; i++) {
+    eyeX = CX + Math.floor(Math.random() * (2 * (LOOK_X + 10) + 1)) - (LOOK_X + 10);
+    eyeY = CY + Math.floor(Math.random() * (2 * (LOOK_Y + 8) + 1)) - (LOOK_Y + 8);
+    await sleep(11);
+  }
+  eyeX = CX; eyeY = CY;
+  // Phase 2: colour inversion flash
+  glitchInvert = true; await sleep(60); glitchInvert = false;
+  // Phase 3: raw scan-line artifacts
+  for (let i = 0; i < 4; i++) {
+    glitchLines.push({ y: Math.floor(Math.random() * 240),
+                       c: `rgb(${(Math.random()*256)|0},${(Math.random()*256)|0},${(Math.random()*256)|0})` });
+    await sleep(50);
+  }
+  await sleep(40); glitchLines = [];
+  await doBlink();
+}
+
+// 4 Dramatic — theatrical stare: slow dilation build, long hold, ponderous deliberate blink
+async function doDramaticTic() {
+  setStatus('Quirk: Dramatic');
+  eyeX = CX; eyeY = CY;
+  tone(NOTE.C4, 180); await sleep(200);
+  pupilRTarget = EYE_R_INNER + 9;
+  await sleep(400);    // slow build
+  await sleep(1400);   // maximum drama hold
+  for (let i = 0; i < 10; i++) { upperSlitOffset += 2; visorOffset += 1; await sleep(35); }   // lids descend
+  await sleep(350);
+  for (let i = 0; i < 10; i++) { upperSlitOffset -= 2; visorOffset -= 1; await sleep(28); }
+  pupilRTarget = EYE_R_INNER;
+}
+
+// 5 Paranoid — checks left/right/up in quick succession, settles into a suspicious squint
+async function doParanoidCheck() {
+  setStatus('Quirk: Paranoid');
+  tone(NOTE.E5, 18); await sleep(40); tone(NOTE.C5, 22); await sleep(40);
+  await glide(CX - LOOK_X - 6, CY, 65); await sleep(80);
+  await glide(CX + LOOK_X + 6, CY, 65); await sleep(80);
+  await glide(CX, CY - LOOK_Y - 4, 65); await sleep(100);
+  pupilRTarget = EYE_R_INNER - 9; upperSlitOffset = -24; visorOffset = -2;   // convinced something's there
+  await sleep(350);
+  await glide(CX, CY, 120);
+  upperSlitOffset = -40; visorOffset = 0; pupilRTarget = EYE_R_INNER;
+}
+
+// 6 Sleepy — visor droops slowly, almost falls asleep, then snaps back with a wake-up pip
+async function doSleepyDroop() {
+  setStatus('Quirk: Sleepy');
+  for (let i = 0; i < 12; i++) { visorOffset += 1.1; upperSlitOffset += 0.8; await sleep(60); }
+  await sleep(700);   // dangerously close to out
+  for (let i = 0; i < 12; i++) { visorOffset -= 1.1; upperSlitOffset -= 0.8; await sleep(18); }   // catches itself
+  tone(NOTE.C5, 22); await sleep(28);
+}
+
+// 7 Hyper — triple rapid-fire dart, can't stay on any one thing, then a double blink
+async function doHyperBurst() {
+  setStatus('Quirk: Hyper');
+  eyeX = CX; eyeY = CY;
+  pupilRTarget = EYE_R_INNER + 7;
+  tone(NOTE.E4, 80); await sleep(140);
+  eyeY = CY - 7; await sleep(70);
+  eyeY = CY; eyeX = CX + 9; await sleep(110); eyeX = CX;
+  eyeX = CX + 5; await sleep(90);
+  eyeX = CX;     await sleep(80);
+  await doBlink(); await sleep(40); await doBlink();
+}
+
+// 8 Shy — looks away down-and-left, visor half-closes, holds, slowly returns
+async function doShyDip() {
+  setStatus('Quirk: Shy');
+  tone(NOTE.E5, 18); await sleep(40); tone(NOTE.C5, 22); await sleep(40);
+  await glide(CX - 9, CY + LOOK_Y + 5, 240);
+  for (let i = 0; i < 5; i++) { visorOffset += 0.7; upperSlitOffset += 0.5; await sleep(28); }
+  await sleep(750);   // enduring the attention from down here
+  for (let i = 0; i < 5; i++) { visorOffset -= 0.7; upperSlitOffset -= 0.5; await sleep(28); }
+  await glide(CX, CY, 220);
+}
+
+// 9 Lovesick — pupil swells toward heart-size, dreamy upward drift, snaps back flustered
+async function doAlmostLove() {
+  setStatus('Quirk: Lovesick');
+  eyeX = CX; eyeY = CY;
+  pupilRTarget = EYE_R_INNER + 14;   // slow dreamy dilation
+  await sleep(576);
+  await glide(CX, CY - LOOK_Y - 3, 450); await sleep(550);
+  pupilRTarget = EYE_R_INNER;        // catches itself
+  await glide(CX, CY, 90); await sleep(55);
+  await doBlink(); await doBlink();
+}
+
+async function doSunBask() {
+  setStatus('Quirk: Sun Bask');
+  // sndSunrise — warm major climb that opens into light
+  tone(NOTE.C4, 70); await sleep(80);
+  tone(NOTE.E4, 70); await sleep(80);
+  tone(NOTE.G4, 70); await sleep(80);
+  bend(NOTE.G4, NOTE.C5, 140); await sleep(180);
+  tone(NOTE.E5, 30); await sleep(50);
+  pupilRTarget = EYE_R_INNER - 7;   // constricts — staring into the light
+  sunRayLen = 7;  await sleep(200); // rays grow…
+  sunRayLen = 14; await sleep(950); // …then bask
+  sunRayLen = 0;
+  eyeY = CY - 3; await sleep(120);  // satisfied warm wiggle
+  eyeY = CY;     await sleep(90);
+}
+
+async function doMoonGaze() {
+  setStatus('Quirk: Moon Gaze');
+  pupilRTarget = EYE_R_INNER + 9;   // night eyes — wide and dark
+  // sndMoonLull — hushed nocturne, three slow falling notes
+  tone(NOTE.A4, 110); await sleep(220);
+  tone(NOTE.E4, 130); await sleep(270);
+  bend(NOTE.E4, NOTE.C4, 320); await sleep(340);
+  for (let i = 0; i <= 6; i++) { moonShadowX = 110 - i * 14; await sleep(95); }  // wax
+  await sleep(1200);                                                            // moonlit hold
+  for (let i = 6; i >= 0; i--) { moonShadowX = 110 - i * 14; await sleep(70); }  // wane
+  moonShadowX = null;
+  await doBlink();
+}
+
+// 12 Heartbeat — soft lub-dub: pupil swells and snaps twice on a low double-thump
+async function doHeartbeat() {
+  setStatus('Quirk: Heartbeat');
+  eyeX = CX; eyeY = CY;
+  for (let beat = 0; beat < 2; beat++) {
+    pupilRTarget = EYE_R_INNER + 7;  await sleep(60);   // lub
+    tone(131, 28);
+    pupilRTarget = EYE_R_INNER + 2;  await sleep(60);
+    await sleep(80);
+    pupilRTarget = EYE_R_INNER + 11; await sleep(60);   // dub (bigger)
+    tone(131, 44);
+    pupilRTarget = EYE_R_INNER;      await sleep(96);
+    await sleep(beat === 0 ? 430 : 120);                // rest between beats
+  }
+}
+
+// 13 Sneeze — scrunches and tips back with a quiver, then ACHOO: violent snap + squeak + sniffle
+async function doSneeze() {
+  setStatus('Quirk: Sneeze');
+  eyeX = CX; eyeY = CY;
+  pupilRTarget = EYE_R_INNER - 3;
+  for (let i = 0; i < 8; i++) {        // build-up: scrunch, tip back, quiver
+    upperSlitOffset -= 0.9; visorOffset -= 0.5;
+    eyeY = CY - 4 + (Math.floor(Math.random() * 3) - 1);
+    await sleep(55);
+  }
+  tone(NOTE.B4, 28); await sleep(110); await sleep(150);
+  pupilRTarget = EYE_R_INNER + 12; eyeY = CY + 9;        // ACHOO — snap forward
+  for (let i = 0; i < 8; i++) { upperSlitOffset += 1.8; visorOffset += 1.0; await sleep(10); }
+  bend(NOTE.E5, NOTE.A4, 90);
+  pupilRTarget = EYE_R_INNER;
+  await glide(CX, CY, 120);
+  await doBlink();                                        // sniffly recovery
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+resetToNeutral();
+setStatus('Idle');
+
+// ═══════════════════════════════════════════════════════════════════
+// ANIMATION CREATOR
+// ═══════════════════════════════════════════════════════════════════
+
+let keyframes = [];   // { timeMs, eyeX, eyeY, pupilR, visorOffset, sound }
+
+// sound = { type:'none' }
+//       | { type:'tone', freq, durMs }
+//       | { type:'bend', fromFreq, toFreq, durMs }
+
+const SOUND_PRESETS = [
+  { label: 'None',               value: 'none' },
+  { label: 'Tone: E3 (60ms)',    value: 'tone:165:60' },
+  { label: 'Tone: A3 (60ms)',    value: 'tone:220:60' },
+  { label: 'Tone: C4 (60ms)',    value: 'tone:262:60' },
+  { label: 'Tone: E4 (60ms)',    value: 'tone:330:60' },
+  { label: 'Tone: G4 (60ms)',    value: 'tone:392:60' },
+  { label: 'Tone: A4 (60ms)',    value: 'tone:440:60' },
+  { label: 'Tone: C5 (60ms)',    value: 'tone:523:60' },
+  { label: 'Tone: E5 (60ms)',    value: 'tone:659:60' },
+  { label: 'Tone: G5 (60ms)',    value: 'tone:784:60' },
+  { label: 'Tone: A5 (60ms)',    value: 'tone:880:60' },
+  { label: 'Tone: C6 (60ms)',    value: 'tone:1047:60' },
+  { label: 'Bend: Low→High (A3→A5, 180ms)',  value: 'bend:220:880:180' },
+  { label: 'Bend: High→Low (A5→A3, 220ms)',  value: 'bend:880:220:220' },
+  { label: 'Bend: Happy (G4→C5, 120ms)',     value: 'bend:392:523:120' },
+  { label: 'Bend: Sad (E4→C4, 220ms)',       value: 'bend:330:262:220' },
+  { label: 'Custom tone…',       value: 'custom' },
+];
+
+function soundPresetToObj(val) {
+  if (!val || val === 'none') return { type: 'none' };
+  if (val.startsWith('tone:')) {
+    const p = val.split(':');
+    return { type: 'tone', freq: +p[1], durMs: +p[2] };
+  }
+  if (val.startsWith('bend:')) {
+    const p = val.split(':');
+    return { type: 'bend', fromFreq: +p[1], toFreq: +p[2], durMs: +p[3] };
+  }
+  return { type: 'none' };
+}
+
+function soundObjToPreset(s) {
+  if (!s || s.type === 'none') return 'none';
+  if (s.type === 'tone')  return `tone:${s.freq}:${s.durMs}`;
+  if (s.type === 'bend')  return `bend:${s.fromFreq}:${s.toFreq}:${s.durMs}`;
+  return 'none';
+}
+
+function soundObjToLabel(s) {
+  if (!s || s.type === 'none') return '—';
+  if (s.type === 'tone')  return `tone ${s.freq}Hz ${s.durMs}ms`;
+  if (s.type === 'bend')  return `bend ${s.fromFreq}→${s.toFreq} ${s.durMs}ms`;
+  return '—';
+}
+
+function buildSoundSelect(currentVal) {
+  const sel = document.createElement('select');
+  sel.style.cssText = 'background:var(--bg);border:1px solid var(--border);color:var(--text);' +
+    'padding:3px 6px;font-family:inherit;font-size:0.68rem;max-width:190px';
+  SOUND_PRESETS.forEach(p => {
+    const opt = document.createElement('option');
+    opt.value = p.value;
+    opt.textContent = p.label;
+    if (p.value === currentVal) opt.selected = true;
+    sel.appendChild(opt);
+  });
+  // Custom freq input (shown when 'custom' selected)
+  const customIn = document.createElement('input');
+  customIn.type = 'number';
+  customIn.placeholder = 'Hz';
+  customIn.min = 20; customIn.max = 8000;
+  customIn.style.cssText = 'width:60px;background:var(--bg);border:1px solid var(--border);' +
+    'color:var(--text);padding:3px 5px;font-family:inherit;font-size:0.68rem;' +
+    'margin-left:4px;display:none';
+  customIn.value = 440;
+  sel.addEventListener('change', () => {
+    customIn.style.display = sel.value === 'custom' ? 'inline-block' : 'none';
+  });
+  if (currentVal === 'custom') customIn.style.display = 'inline-block';
+  const wrap = document.createElement('span');
+  wrap.appendChild(sel); wrap.appendChild(customIn);
+  return wrap;
+}
+
+function getSoundFromRow(row) {
+  const wrap = row.cells[6].firstChild;
+  const sel = wrap.querySelector('select');
+  if (sel.value === 'custom') {
+    const hz = parseInt(wrap.querySelector('input').value) || 440;
+    return { type: 'tone', freq: hz, durMs: 60 };
+  }
+  return soundPresetToObj(sel.value);
+}
+
+function numInput(val, min, max, w) {
+  const inp = document.createElement('input');
+  inp.type = 'number'; inp.value = val; inp.min = min; inp.max = max;
+  inp.style.cssText = `width:${w||52}px;background:var(--bg);border:1px solid var(--border);` +
+    'color:var(--text);padding:3px 5px;font-family:inherit;font-size:0.72rem;text-align:center';
+  return inp;
+}
+
+function renderKfTable() {
+  const tbody = document.getElementById('kfBody');
+  tbody.innerHTML = '';
+  keyframes.forEach((kf, idx) => {
+    const tr = document.createElement('tr');
+    tr.style.borderBottom = '1px solid var(--border)';
+    // # cell
+    const tdN = document.createElement('td');
+    tdN.style.padding = '4px 6px'; tdN.style.color = 'var(--muted)';
+    tdN.textContent = idx + 1;
+    tr.appendChild(tdN);
+    // numeric cells
+    const fields = [
+      { key: 'timeMs',      min: 0,   max: 99999, w: 62 },
+      { key: 'eyeX',        min: 60,  max: 180,   w: 52 },
+      { key: 'eyeY',        min: 60,  max: 180,   w: 52 },
+      { key: 'pupilR',      min: 8,   max: 90,    w: 52 },
+      { key: 'visorOffset', min: -30, max: 30,    w: 52 },
+    ];
+    fields.forEach(f => {
+      const td = document.createElement('td');
+      td.style.padding = '3px 4px';
+      const inp = numInput(kf[f.key], f.min, f.max, f.w);
+      inp.addEventListener('change', () => {
+        keyframes[idx][f.key] = parseFloat(inp.value);
+      });
+      td.appendChild(inp);
+      tr.appendChild(td);
+    });
+    // sound cell
+    const tdS = document.createElement('td');
+    tdS.style.padding = '3px 4px';
+    const soundWrap = buildSoundSelect(soundObjToPreset(kf.sound));
+    tdS.appendChild(soundWrap);
+    tr.appendChild(tdS);
+    // remove cell
+    const tdX = document.createElement('td');
+    tdX.style.padding = '3px 6px';
+    const btnX = document.createElement('button');
+    btnX.textContent = '✕';
+    btnX.style.cssText = 'border-color:var(--muted);color:var(--muted);padding:2px 7px;font-size:0.7rem';
+    btnX.addEventListener('click', () => { keyframes.splice(idx, 1); renderKfTable(); });
+    tdX.appendChild(btnX);
+    tr.appendChild(tdX);
+    tbody.appendChild(tr);
+  });
+}
+
+function collectKeyframes() {
+  // Read latest values from the DOM back into keyframes[]
+  const rows = document.getElementById('kfBody').rows;
+  for (let i = 0; i < rows.length; i++) {
+    const cells = rows[i].cells;
+    keyframes[i].timeMs      = parseFloat(cells[1].firstChild.value) || 0;
+    keyframes[i].eyeX        = parseFloat(cells[2].firstChild.value) || CX;
+    keyframes[i].eyeY        = parseFloat(cells[3].firstChild.value) || CY;
+    keyframes[i].pupilR      = parseFloat(cells[4].firstChild.value) || EYE_R_INNER;
+    keyframes[i].visorOffset = parseFloat(cells[5].firstChild.value) || 0;
+    keyframes[i].sound       = getSoundFromRow(rows[i]);
+  }
+  keyframes.sort((a, b) => a.timeMs - b.timeMs);
+}
+
+function defaultKf(prevKf) {
+  return {
+    timeMs:      prevKf ? prevKf.timeMs + 200 : 0,
+    eyeX:        prevKf ? prevKf.eyeX   : CX,
+    eyeY:        prevKf ? prevKf.eyeY   : CY,
+    pupilR:      prevKf ? prevKf.pupilR : EYE_R_INNER,
+    visorOffset: prevKf ? prevKf.visorOffset : 0,
+    sound:       { type: 'none' },
+  };
+}
+
+function addKeyframe() {
+  const prev = keyframes.length ? keyframes[keyframes.length - 1] : null;
+  keyframes.push(defaultKf(prev));
+  renderKfTable();
+}
+
+function clearKeyframes() {
+  keyframes = [];
+  renderKfTable();
+  document.getElementById('exportArea').style.display = 'none';
+}
+
+function toggleAnimCreator() {
+  const body = document.getElementById('animCreatorBody');
+  const btn  = document.getElementById('animToggleBtn');
+  if (body.style.display === 'none') {
+    body.style.display = 'block';
+    btn.textContent = '▲ Animation Creator';
+    if (keyframes.length === 0) {
+      // Seed with two starter keyframes
+      keyframes.push(defaultKf(null));
+      keyframes.push(defaultKf(keyframes[0]));
+      renderKfTable();
+    }
+  } else {
+    body.style.display = 'none';
+    btn.textContent = '▼ Animation Creator';
+  }
+}
+
+// ── Preview ─────────────────────────────────────────────────────────────────
+
+async function previewAnimation() {
+  collectKeyframes();
+  if (keyframes.length === 0) return;
+  if (animRunning) return;
+  animRunning = true;
+  document.querySelectorAll('.btn-grid button').forEach(b => b.disabled = true);
+  setStatus('Preview: ' + (document.getElementById('animName').value || 'anim'));
+
+  try {
+    const sorted = [...keyframes].sort((a, b) => a.timeMs - b.timeMs);
+    // Start state = first keyframe snapped instantly
+    const first = sorted[0];
+    eyeX = first.eyeX; eyeY = first.eyeY;
+    pupilRTarget = first.pupilR;
+    visorOffset  = first.visorOffset;
+    if (first.sound.type === 'tone') tone(first.sound.freq, first.sound.durMs);
+    if (first.sound.type === 'bend') bend(first.sound.fromFreq, first.sound.toFreq, first.sound.durMs);
+
+    for (let i = 1; i < sorted.length; i++) {
+      const from = sorted[i - 1];
+      const to   = sorted[i];
+      const dur  = Math.max(0, to.timeMs - from.timeMs);
+
+      // Play sound at start of segment
+      if (to.sound.type === 'tone') tone(to.sound.freq, to.sound.durMs);
+      if (to.sound.type === 'bend') bend(to.sound.fromFreq, to.sound.toFreq, to.sound.durMs);
+
+      // Glide eye & visor
+      if (dur > 0) {
+        await glide(to.eyeX, to.eyeY, dur);
+        // Interpolate visor & pupilR over the same window (already gliding above)
+        // visor and pupilR settle via the remaining time after glide
+        visorOffset  = to.visorOffset;
+        pupilRTarget = to.pupilR;
+      } else {
+        eyeX = to.eyeX; eyeY = to.eyeY;
+        visorOffset  = to.visorOffset;
+        pupilRTarget = to.pupilR;
+      }
+    }
+    // Hold the last frame briefly
+    await sleep(300);
+  } catch(e) { console.error(e); }
+  finally {
+    animRunning = false;
+    resetToNeutral();
+    document.querySelectorAll('.btn-grid button').forEach(b => b.disabled = false);
+    setStatus('Idle');
+  }
+}
+
+// ── Arduino Export ───────────────────────────────────────────────────────────
+
+const NOTE_NAMES = {
+  165:'NOTE_E3', 220:'NOTE_A3', 247:'NOTE_B3', 262:'NOTE_C4',
+  294:'NOTE_D4', 330:'NOTE_E4', 349:'NOTE_F4', 392:'NOTE_G4',
+  440:'NOTE_A4', 494:'NOTE_B4', 523:'NOTE_C5', 587:'NOTE_D5',
+  659:'NOTE_E5', 698:'NOTE_F5', 784:'NOTE_G5', 880:'NOTE_A5',
+  988:'NOTE_B5', 1047:'NOTE_C6',
+};
+function freqToNote(f) { return NOTE_NAMES[f] || f; }
+
+function exportArduino() {
+  collectKeyframes();
+  if (keyframes.length === 0) return;
+  const sorted = [...keyframes].sort((a, b) => a.timeMs - b.timeMs);
+  const name   = (document.getElementById('animName').value || 'myAnim').replace(/\W+/g, '_');
+
+  let code = `// Generated by Blip Simulator\nvoid do${name.charAt(0).toUpperCase() + name.slice(1)}() {\n`;
+
+  const pupilDelta = (r) => {
+    const d = r - EYE_R_INNER;
+    if (Math.abs(d) < 0.5) return `  pupilRTarget = (float)EYE_R_INNER;\n`;
+    const sign = d > 0 ? '+' : '-';
+    return `  pupilRTarget = (float)EYE_R_INNER ${sign} ${Math.abs(d).toFixed(1)}f;\n`;
+  };
+
+  // Snap to first keyframe
+  const first = sorted[0];
+  code += `  // Initial state (t=${first.timeMs}ms)\n`;
+  code += `  eyeX = ${first.eyeX}; eyeY = ${first.eyeY};\n`;
+  code += pupilDelta(first.pupilR);
+  code += `  visorOffset = ${first.visorOffset.toFixed(1)}f;\n`;
+  if (first.sound.type === 'tone') {
+    code += `  t_(${freqToNote(first.sound.freq)}, ${first.sound.durMs}); delay(${first.sound.durMs + 8}); noTone(PIN_SPK);\n`;
+  } else if (first.sound.type === 'bend') {
+    code += `  bend(${freqToNote(first.sound.fromFreq)}, ${freqToNote(first.sound.toFreq)}, ${first.sound.durMs});\n`;
+  }
+  code += `  drawEye();\n`;
+
+  for (let i = 1; i < sorted.length; i++) {
+    const from = sorted[i - 1];
+    const to   = sorted[i];
+    const dur  = Math.max(0, to.timeMs - from.timeMs);
+    code += `\n  // Frame ${i}: t=${from.timeMs}ms → ${to.timeMs}ms (${dur}ms)\n`;
+    if (to.sound.type === 'tone') {
+      code += `  t_(${freqToNote(to.sound.freq)}, ${to.sound.durMs}); delay(${to.sound.durMs + 8}); noTone(PIN_SPK);\n`;
+    } else if (to.sound.type === 'bend') {
+      code += `  bend(${freqToNote(to.sound.fromFreq)}, ${freqToNote(to.sound.toFreq)}, ${to.sound.durMs});\n`;
+    }
+    if (dur > 0) {
+      code += `  glideEye(${to.eyeX}, ${to.eyeY}, ${dur});\n`;
+    } else {
+      code += `  eyeX = ${to.eyeX}; eyeY = ${to.eyeY}; drawEye();\n`;
+    }
+    code += pupilDelta(to.pupilR);
+    if (to.visorOffset !== from.visorOffset) {
+      code += `  visorOffset = ${to.visorOffset.toFixed(1)}f; drawEye();\n`;
+    }
+    if (dur > 0 && (to.visorOffset === from.visorOffset && to.pupilR === from.pupilR)) {
+      // glideEye already consumed the time; add remainder if any
+      // (minimal — glideEye's steps cover the full duration)
+    } else if (dur > 0) {
+      const remainder = dur - Math.max(1, Math.round(dur / 16)) * 16;
+      if (remainder > 20) code += `  delay(${remainder});\n`;
+    }
+  }
+
+  code += `\n  setNeutral(); drawEye();\n}\n`;
+
+  const area = document.getElementById('exportArea');
+  const ta   = document.getElementById('exportCode');
+  ta.value   = code;
+  area.style.display = 'block';
+}
+
+function copyExport() {
+  const ta = document.getElementById('exportCode');
+  ta.select();
+  document.execCommand('copy');
+  const btn = event.target;
+  const orig = btn.textContent;
+  btn.textContent = 'Copied!';
+  setTimeout(() => btn.textContent = orig, 1200);
+}
+</script>
+</body>
+</html>

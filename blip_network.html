@@ -1,0 +1,2064 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Blip Network</title>
+<style>
+/* ── Base ───────────────────────────────────────────────────────────────── */
+:root {
+  --bg:      #07070e;
+  --panel:   #0d0d1a;
+  --border:  #181828;
+  --accent:  #5599ff;
+  --text:    #c8d0ee;
+  --muted:   #445566;
+  --muted2:  #2a3040;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Courier New', Courier, monospace;
+  min-height: 100vh;
+  padding: 20px 24px 40px;
+}
+@media (max-width: 600px) {
+  body { padding: 12px 12px 32px; }
+  h1   { font-size: 1.0rem; letter-spacing: 3px; }
+  .header-right { gap: 8px; }
+  button { padding: 9px 14px; font-size: 0.75rem; }
+  #friendshipMap { height: 320px; }
+  #monitorOutput { height: 180px; }
+  .bot-card { width: 100%; }
+}
+
+/* ── Header ─────────────────────────────────────────────────────────────── */
+header {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-bottom: 28px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+h1 {
+  font-size: 1.35rem;
+  letter-spacing: 5px;
+  color: var(--accent);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.subtitle {
+  font-size: 0.68rem;
+  color: var(--muted);
+  margin-top: 3px;
+  letter-spacing: 1px;
+}
+.header-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+#pollStatus {
+  font-size: 0.68rem;
+  color: var(--muted);
+  letter-spacing: 1px;
+}
+
+/* ── Buttons ─────────────────────────────────────────────────────────────── */
+button {
+  background: transparent;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  padding: 7px 16px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.8rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+button:hover  { background: var(--accent); color: var(--bg); }
+button:active { opacity: 0.7; }
+.btn-danger {
+  border-color: #664;
+  color: #996;
+}
+.btn-danger:hover { background: #442; color: #cc8; }
+
+/* ── Bot cards ───────────────────────────────────────────────────────────── */
+#botCards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 32px;
+  min-height: 28px;
+}
+.bot-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px 16px 14px;
+  width: 238px;
+  flex-shrink: 0;
+  position: relative;
+  transition: border-color 0.3s;
+}
+.bot-card-header {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  margin-bottom: 13px;
+}
+.bot-name {
+  font-size: 0.95rem;
+  font-weight: bold;
+  letter-spacing: 1px;
+  line-height: 1.2;
+}
+.bot-substatus {
+  font-size: 0.65rem;
+  color: var(--muted);
+  margin-top: 2px;
+  letter-spacing: 0.5px;
+}
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.71rem;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--muted2);
+}
+.stat-row .label { color: var(--muted); }
+.stat-row .value { color: var(--text); }
+.bond-bar {
+  height: 3px;
+  background: var(--muted2);
+  border-radius: 2px;
+  margin: 8px 0 10px;
+  overflow: hidden;
+}
+.bond-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.6s ease;
+}
+.remove-btn {
+  position: absolute;
+  top: 10px; right: 10px;
+  border: none;
+  color: var(--muted);
+  padding: 2px 7px;
+  font-size: 0.75rem;
+  letter-spacing: 0;
+  cursor: pointer;
+  background: transparent;
+}
+.remove-btn:hover { background: transparent; color: #ff4466; }
+.birthday-badge {
+  font-size: 0.65rem;
+  margin-top: 6px;
+  color: #ffcc44;
+  letter-spacing: 1px;
+}
+@keyframes eyePulse {
+  0%, 100% { filter: brightness(1); }
+  50%       { filter: brightness(1.3); }
+}
+.eye-live { animation: eyePulse 3s ease-in-out infinite; }
+.empty-hint {
+  color: var(--muted);
+  font-size: 0.78rem;
+  padding: 6px 0;
+  letter-spacing: 1px;
+}
+
+/* ── Known-peers section inside bot cards ────────────────────────────────── */
+.peers-section {
+  margin-top: 10px;
+  border-top: 1px solid var(--muted2);
+  padding-top: 8px;
+}
+.peers-heading {
+  font-size: 0.62rem;
+  color: var(--muted);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 5px;
+}
+.peer-entry {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 3px 0;
+  font-size: 0.68rem;
+}
+.peer-entry-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.peer-live  { color: #44ff88; }
+.peer-ghost { color: var(--muted); }
+
+/* ── Map section ─────────────────────────────────────────────────────────── */
+#mapSection {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px 20px 12px;
+}
+#mapSection h2 {
+  font-size: 0.78rem;
+  letter-spacing: 4px;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-bottom: 16px;
+}
+.mesh-count {
+  letter-spacing: 1px;
+  color: var(--accent);
+  font-size: 0.68rem;
+  margin-left: 8px;
+}
+#friendshipMap {
+  width: 100%;
+  height: 540px;
+  display: block;
+  overflow: visible;
+}
+.edge-tier-label {
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  fill: #7788aa;
+  pointer-events: none;
+  text-anchor: middle;
+}
+.edge-bond-label {
+  font-family: 'Courier New', monospace;
+  font-size: 10px;
+  fill: #445566;
+  pointer-events: none;
+  text-anchor: middle;
+}
+.node-name {
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  pointer-events: none;
+  text-anchor: middle;
+  dominant-baseline: hanging;
+}
+.node-mood {
+  font-family: 'Courier New', monospace;
+  font-size: 10px;
+  fill: #445566;
+  pointer-events: none;
+  text-anchor: middle;
+  dominant-baseline: hanging;
+}
+.map-empty {
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+  fill: #223344;
+  text-anchor: middle;
+  dominant-baseline: middle;
+  letter-spacing: 2px;
+}
+.map-hint {
+  font-family: 'Courier New', monospace;
+  font-size: 10px;
+  fill: #1a2233;
+  text-anchor: middle;
+  dominant-baseline: middle;
+  letter-spacing: 1px;
+}
+
+/* ── Tooltip ─────────────────────────────────────────────────────────────── */
+#tooltip {
+  position: fixed;
+  background: #111824;
+  border: 1px solid #223;
+  border-radius: 6px;
+  padding: 10px 14px;
+  font-size: 0.72rem;
+  color: var(--text);
+  pointer-events: none;
+  display: none;
+  max-width: 240px;
+  line-height: 1.7;
+  z-index: 100;
+}
+
+/* ── Serial monitor ──────────────────────────────────────────────────────── */
+#monitorSection {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px 20px 14px;
+  margin-top: 20px;
+}
+#monitorSection h2 {
+  font-size: 0.78rem;
+  letter-spacing: 4px;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+#monitorLineCount {
+  font-size: 0.60rem;
+  color: var(--muted);
+  letter-spacing: 1px;
+  margin-left: 2px;
+}
+.monitor-controls {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.monitor-controls select,
+.monitor-controls input[type="text"] {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.78rem;
+  padding: 5px 10px;
+  border-radius: 4px;
+  outline: none;
+  letter-spacing: 0.5px;
+}
+.monitor-controls input[type="text"] { flex: 1; min-width: 180px; }
+.monitor-controls select:focus,
+.monitor-controls input[type="text"]:focus { border-color: var(--accent); }
+.monitor-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.72rem;
+  color: var(--muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+#monitorOutput {
+  height: 260px;
+  overflow-y: scroll;
+  background: #04040a;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 0.69rem;
+  line-height: 1.55;
+}
+#monitorOutput div { white-space: pre-wrap; word-break: break-all; }
+.mon-empty {
+  color: var(--muted);
+  font-size: 0.72rem;
+  padding: 2px 0;
+  letter-spacing: 1px;
+}
+
+/* ── Config panel ─────────────────────────────────────────────────────────── */
+#configSection {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px 20px 14px;
+  margin-top: 20px;
+}
+#configSection h2 {
+  font-size: 0.78rem;
+  letter-spacing: 4px;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.cfg-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px 20px;
+}
+.cfg-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.cfg-row label {
+  font-size: 0.68rem;
+  color: var(--muted);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.cfg-row select,
+.cfg-row input[type="text"],
+.cfg-row input[type="range"] {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.78rem;
+  padding: 5px 10px;
+  border-radius: 4px;
+  outline: none;
+  width: 100%;
+}
+.cfg-row select:focus,
+.cfg-row input:focus { border-color: var(--accent); }
+.cfg-val {
+  font-size: 0.65rem;
+  color: var(--accent);
+  margin-left: 4px;
+}
+.cfg-bot-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+.cfg-bot-bar select {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.78rem;
+  padding: 5px 10px;
+  border-radius: 4px;
+  outline: none;
+}
+#cfgStatus {
+  font-size: 0.65rem;
+  color: var(--muted);
+  letter-spacing: 1px;
+  margin-left: auto;
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>⬡ Blip Network</h1>
+    <div class="subtitle" id="secureHint">Chrome / Edge · Web Bluetooth · <span id="ctxBadge" style="cursor:pointer" onclick="showServeHelp()">checking…</span> · pick <b style="color:var(--text)">ShoulderBot</b> from the list</div>
+  </div>
+  <div class="header-right">
+    <span id="pollStatus"></span>
+    <button class="btn-danger" onclick="confirmClearMesh()" title="Forget all historical connection data">Clear History</button>
+    <button id="serialBtn"  onclick="addBotSerial()" title="Connect via USB cable (works on file://)">＋ USB</button>
+    <button id="connectBtn" onclick="addBot()"        title="Connect via Bluetooth (needs http://localhost)">＋ Bluetooth</button>
+  </div>
+</header>
+
+<div id="botCards"></div>
+
+<div id="mapSection">
+  <h2>Friendship Map<span class="mesh-count" id="meshCount"></span></h2>
+  <svg id="friendshipMap" viewBox="0 0 900 540">
+    <text id="mapEmpty" x="450" y="255" class="map-empty">No Blips connected</text>
+    <text id="mapHint"  x="450" y="282" class="map-hint">Press  ＋ Connect Blip  or wait for auto-reconnect</text>
+    <g id="edgeLayer"></g>
+    <g id="nodeLayer"></g>
+  </svg>
+</div>
+
+<div id="monitorSection">
+  <h2>
+    Serial Monitor
+    <span id="monitorLineCount"></span>
+    <button onclick="clearMonitor()" style="font-size:0.68rem;padding:4px 10px;letter-spacing:1px">Clear</button>
+    <label class="monitor-toggle">
+      <input type="checkbox" id="autoScroll" checked> auto-scroll
+    </label>
+  </h2>
+  <div class="monitor-controls">
+    <select id="monitorTarget"><option value="__all__">— all connected —</option></select>
+    <input type="text" id="monitorCmd" placeholder="command  (Enter to send)" />
+    <button onclick="sendMonitorCmd()">Send</button>
+  </div>
+  <div style="font-size:0.62rem;color:var(--muted);letter-spacing:0.5px;margin-bottom:4px">Ctrl+S status · Ctrl+B bonds · Ctrl+H help · Esc clear</div>
+  <div id="monitorOutput"><div class="mon-empty">Waiting for data…</div></div>
+</div>
+
+<div id="configSection">
+  <h2>
+    Customise Blip
+    <span id="cfgStatus"></span>
+  </h2>
+  <div class="cfg-bot-bar">
+    <label style="font-size:0.68rem;color:var(--muted);letter-spacing:1px">Target:</label>
+    <select id="cfgTarget"><option value="__none__">— select a connected Blip —</option></select>
+  </div>
+  <div class="cfg-grid">
+
+    <div class="cfg-row">
+      <label>Bot name</label>
+      <input type="text" id="cfgName" maxlength="24" placeholder="e.g. Bloop" />
+    </div>
+
+    <div class="cfg-row">
+      <label>Eye theme</label>
+      <select id="cfgTheme">
+        <option value="0">0 — Cyan</option>
+        <option value="1">1 — Green</option>
+        <option value="2">2 — Purple</option>
+        <option value="3">3 — Orange</option>
+        <option value="4">4 — Red</option>
+        <option value="5">5 — Ice</option>
+        <option value="6">6 — Pink</option>
+        <option value="7">7 — Gold</option>
+        <option value="8">8 — Teal</option>
+        <option value="9">9 — White</option>
+        <option value="10">10 — Rainbow cycle</option>
+        <option value="11">11 — Mood-reactive</option>
+      </select>
+    </div>
+
+    <div class="cfg-row">
+      <label>Quirk</label>
+      <select id="cfgQuirk">
+        <option value="0">0 — None</option>
+        <option value="1">1 — Twitchy</option>
+        <option value="2">2 — Restless</option>
+        <option value="3">3 — Glitchy</option>
+        <option value="4">4 — Dramatic</option>
+        <option value="5">5 — Paranoid</option>
+        <option value="6">6 — Sleepy</option>
+        <option value="7">7 — Hyper</option>
+        <option value="8">8 — Shy</option>
+        <option value="9">9 — Lovesick</option>
+        <option value="10">10 — Sun</option>
+        <option value="11">11 — Moon</option>
+        <option value="12">12 — Heartbeat</option>
+        <option value="13">13 — Sneeze</option>
+      </select>
+    </div>
+
+    <div class="cfg-row">
+      <label>Personality</label>
+      <select id="cfgPers">
+        <option value="0">0 — Balanced</option>
+        <option value="1">1 — Cheerful</option>
+        <option value="2">2 — Grumpy</option>
+        <option value="3">3 — Anxious</option>
+        <option value="4">4 — Stoic</option>
+      </select>
+    </div>
+
+    <div class="cfg-row">
+      <label>Extroversion</label>
+      <select id="cfgExt">
+        <option value="0">0 — Introverted</option>
+        <option value="1">1 — Balanced</option>
+        <option value="2">2 — Extroverted</option>
+      </select>
+    </div>
+
+    <div class="cfg-row">
+      <label>Talkativeness</label>
+      <select id="cfgTalk">
+        <option value="0">0 — Quiet</option>
+        <option value="1">1 — Balanced</option>
+        <option value="2">2 — Talkative</option>
+      </select>
+    </div>
+
+    <div class="cfg-row">
+      <label>Voice pitch</label>
+      <select id="cfgVoice">
+        <option value="0">0 — Deep</option>
+        <option value="1">1 — Normal</option>
+        <option value="2">2 — High</option>
+      </select>
+    </div>
+
+    <div class="cfg-row">
+      <label>Accent colour</label>
+      <select id="cfgAccent">
+        <option value="0">0 — Yellow</option>
+        <option value="1">1 — Pink</option>
+        <option value="2">2 — White</option>
+        <option value="3">3 — Red</option>
+        <option value="4">4 — Cyan</option>
+      </select>
+    </div>
+
+    <div class="cfg-row">
+      <label>Sound style</label>
+      <select id="cfgSound">
+        <option value="0">0 — Melodic</option>
+        <option value="1">1 — Chirpy</option>
+        <option value="2">2 — Droning</option>
+        <option value="3">3 — Soft</option>
+        <option value="4">4 — Distorted</option>
+      </select>
+    </div>
+
+  </div><!-- .cfg-grid -->
+  <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap">
+    <button onclick="cfgApply()">Apply Changes</button>
+    <button onclick="cfgRead()" style="border-color:var(--muted);color:var(--muted)">Read from Bot</button>
+  </div>
+  <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+    <span style="font-size:0.68rem;color:var(--muted);letter-spacing:1px">Sound:</span>
+    <label style="display:flex;align-items:center;gap:6px;font-size:0.72rem">
+      Volume
+      <input id="cfgVolume" type="range" min="0" max="5" step="1" value="3"
+             oninput="document.getElementById('cfgVolVal').textContent = this.value"
+             onchange="cfgSend('volume ' + this.value)" style="vertical-align:middle">
+      <span id="cfgVolVal" style="width:1ch;color:var(--accent)">3</span>
+    </label>
+    <button onclick="cfgSend('mute on')">Mute</button>
+    <button onclick="cfgSend('mute off')">Unmute</button>
+    <button onclick="cfgSend('demo')">Demo</button>
+    <button onclick="cfgSend('random')">Surprise</button>
+  </div>
+  <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+    <span style="font-size:0.68rem;color:var(--muted);letter-spacing:1px">Motion (Waveshare):</span>
+    <button onclick="cfgSend('upright on')">Upright ON</button>
+    <button onclick="cfgSend('upright off')">Upright OFF</button>
+    <button onclick="cfgSend('upright cal')">Level Cal</button>
+    <button onclick="cfgSend('quirk')">Fire Quirk Tic</button>
+  </div>
+</div>
+
+<div id="tooltip"></div>
+
+<script>
+'use strict';
+
+// ── RGB565 → CSS colour ───────────────────────────────────────────────────────
+function rgb565(c) {
+  const r5 = (c >> 11) & 0x1F,  r8 = (r5 << 3) | (r5 >> 2);
+  const g6 = (c >>  5) & 0x3F,  g8 = (g6 << 2) | (g6 >> 4);
+  const b5 = (c)       & 0x1F,  b8 = (b5 << 3) | (b5 >> 2);
+  return `rgb(${r8},${g8},${b8})`;
+}
+
+// Theme table — mirrors applyTheme() in the firmware (10 palettes + 2 dynamic modes)
+const THEMES = [
+  { dark:0x0410, mid:0x3D7D, brt:0x867D, name:'Cyan'   },
+  { dark:0x0220, mid:0x04C0, brt:0x2FE6, name:'Green'  },
+  { dark:0x2009, mid:0x600F, brt:0xC01F, name:'Purple' },
+  { dark:0x4100, mid:0xA280, brt:0xFD00, name:'Orange' },
+  { dark:0x2800, mid:0x7000, brt:0xD000, name:'Red'    },
+  { dark:0x218E, mid:0x645B, brt:0xDF7F, name:'Ice'    },
+  { dark:0x4046, mid:0xB110, brt:0xFA98, name:'Pink'   },
+  { dark:0x41C0, mid:0xA482, brt:0xFF44, name:'Gold'   },
+  { dark:0x0986, mid:0x2450, brt:0x5758, name:'Teal'   },
+  { dark:0x2945, mid:0x738E, brt:0xE73C, name:'White'  },
+  { dark:0x2009, mid:0x600F, brt:0xC01F, name:'Rainbow'}, // dynamic — icon shows a placeholder hue
+  { dark:0x0410, mid:0x3D7D, brt:0x867D, name:'Mood'   }, // dynamic — icon shows a placeholder hue
+];
+
+const TIER_NAMES   = ['Unknown','Familiar','Friend','Trusted','Bonded','Kindred'];
+const TIER_GLOWS   = ['#333','#2255aa','#228844','#aaaa00','#cc6600','#cc44aa'];
+
+function tierFromBond(bond) {
+  if (bond >= 90) return 5;
+  if (bond >= 70) return 4;
+  if (bond >= 45) return 3;
+  if (bond >= 20) return 2;
+  if (bond >=  5) return 1;
+  return 0;
+}
+
+const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function numToMonthDay(m, d) {
+  if (!m || !d || m < 1 || m > 12) return '';
+  return MONTH_NAMES[m - 1] + ' ' + d;
+}
+
+// ── Mesh persistent store ─────────────────────────────────────────────────────
+// Survives page refreshes via localStorage.
+// mesh.bots[name]          : last-known status snapshot for each bot
+// mesh.edges["A|B"]        : relationship record (A < B alphabetically)
+const MESH_KEY = 'blipMesh_v2';
+let mesh = (() => {
+  try { return JSON.parse(localStorage.getItem(MESH_KEY)) || { bots:{}, edges:{} }; }
+  catch { return { bots:{}, edges:{} }; }
+})();
+
+function saveMesh() {
+  try { localStorage.setItem(MESH_KEY, JSON.stringify(mesh)); } catch(e) {}
+}
+
+function confirmClearMesh() {
+  if (confirm('Forget all historical Blip connection data?\n(Live connections stay active.)')) {
+    mesh = { bots:{}, edges:{} };
+    saveMesh();
+    renderCards();
+    renderMap();
+  }
+}
+
+function edgeKey(a, b) { return [a, b].sort().join('|'); }
+
+// Write the current bot's snapshot into mesh.bots.
+function updateMeshBot(bot) {
+  if (!bot.name || bot.name.startsWith('Blip-')) return;
+  mesh.bots[bot.name] = {
+    theme:        bot.theme,
+    bdayStr:      bot.bdayStr,
+    dayMood:      bot.dayMood,
+    lifeStage:    bot.lifeStage,
+    sleeping:     bot.sleeping,
+    bond:         bot.bond,
+    tier:         bot.tier,
+    tierName:     bot.tierName,
+    rpsWins:      bot.rpsWins,
+    rpsLosses:    bot.rpsLosses,
+    rpsStreak:    bot.rpsStreak,
+    bootCount:    bot.bootCount,
+    interactions: bot.interactions,
+    peerSeen:     bot.peerSeen,
+    battPct:      bot.battPct,
+    tiredMode:    bot.tiredMode,
+    lastSeen:     Date.now(),
+  };
+  saveMesh();
+}
+
+// Record a directed bond from `fromName` toward `toName`.
+// key is sorted alphabetically; bondLo / bondHi tracks each direction.
+function updateMeshEdge(fromName, toName, bond) {
+  if (!fromName || !toName || fromName === toName) return;
+  const key = edgeKey(fromName, toName);
+  const rec = mesh.edges[key] || {};
+  const [lo, hi] = [fromName, toName].sort();
+  rec.nameLo = lo;
+  rec.nameHi = hi;
+  if (fromName === lo) rec.bondLo = bond;
+  else                 rec.bondHi = bond;
+  rec.lastSeen = Date.now();
+  mesh.edges[key] = rec;
+  saveMesh();
+}
+
+// Try to identify the peer bot by birthday matching.
+// Sources: parsed "Peer birthday" from bonds output, or "bday=M/D" from scan log.
+function tryResolvePeer(bot) {
+  if (!bot.peerBdayStr || !bot.name || bot.name.startsWith('Blip-')) return;
+
+  // 1. Search live bots first (most reliable — same session)
+  for (const [id, other] of bots) {
+    if (id === bot.portId || !other.bdayStr) continue;
+    if (other.bdayStr === bot.peerBdayStr && other.name !== bot.name
+        && !other.name.startsWith('Blip-')) {
+      bot.peerName = other.name;
+      updateMeshEdge(bot.name, other.name, bot.bond);
+      // Symmetric: if the other bot has bond data too, record that direction too
+      if (other.bond > 0) updateMeshEdge(other.name, bot.name, other.bond);
+      return;
+    }
+  }
+
+  // 2. Fallback: search mesh history (cross-session matching)
+  for (const [name, info] of Object.entries(mesh.bots)) {
+    if (name === bot.name) continue;
+    if (info.bdayStr && info.bdayStr === bot.peerBdayStr) {
+      bot.peerName = name;
+      updateMeshEdge(bot.name, name, bot.bond);
+      return;
+    }
+  }
+}
+
+// Call this after any significant parsed update.
+function onBotUpdated(bot) {
+  updateMeshBot(bot);
+  tryResolvePeer(bot);
+  cfgSyncFromBot(bot);
+}
+
+// ── Live bot state store ──────────────────────────────────────────────────────
+const bots    = new Map();   // portId → botState
+let   nextIdx = 0;
+
+function defaultBot(portId) {
+  return {
+    portId,
+    connType: 'ble',  // 'ble' | 'serial'
+    // BLE fields
+    device: null,
+    rxChar: null,
+    // Serial fields
+    port: null,
+    writer: null,
+    reader: null,
+    name: `Blip-${++nextIdx}`,
+    theme: 0,
+    bond: 0, tier: 0, tierName: 'Stranger',
+    rpsWins: 0, rpsLosses: 0, rpsStreak: 0,
+    lifeStage: '?', dayMood: '?',
+    voice: 1, accent: 0, posture: 0, sound: 0,
+    bootCount: 0, interactions: 0, peerSeen: false,
+    sleeping: false,
+    battPct: null, tiredMode: false,
+    bdayStr: '', todayStr: '', isBirthday: false,
+    peerBdayStr: '',
+    peerName: null,
+    peerActiveAt: 0,        // millis of the last real-time "Peer: RSSI=…" sighting
+    peerActiveRssi: null,
+    moodHistory: [],   // last 5 day moods
+    bondHistory: [],   // last 20 bond readings
+    pollLatency: null, // ms between poll start and status response
+    lastPoll: 0,
+    connected: false,
+    connectedAt: Date.now(),
+    lineBuf: '',
+  };
+}
+
+// ── Web Bluetooth (NUS — Nordic UART Service) ─────────────────────────────────
+// RX char  6E400002  browser writes commands here  (Write | Write Without Response)
+// TX char  6E400003  bot notifies responses here   (Notify)
+const NUS_SVC  = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
+const NUS_RX   = '6e400002-b5a3-f393-e0a9-e50e24dcca9e';
+const NUS_TX   = '6e400003-b5a3-f393-e0a9-e50e24dcca9e';
+
+// Try to reconnect to all previously granted ShoulderBot devices automatically.
+async function autoReconnect() {
+  if (!navigator.bluetooth?.getDevices) return;
+  let devices;
+  try { devices = await navigator.bluetooth.getDevices(); } catch(e) { return; }
+  for (const device of devices) {
+    if (!bots.has(device.id) && device.name?.startsWith('ShoulderBot')) {
+      connectDevice(device).catch(() => {});
+    }
+  }
+}
+
+// ── Connection status helpers ─────────────────────────────────────────────────
+function setConnStatus(msg, col) {
+  const el = document.getElementById('pollStatus');
+  if (el) { el.textContent = msg; el.style.color = col || 'var(--muted)'; }
+}
+
+// Show an error banner below the header that can't be missed.
+function showBanner(msg, col) {
+  let b = document.getElementById('btBanner');
+  if (!b) {
+    b = document.createElement('div');
+    b.id = 'btBanner';
+    b.style.cssText = 'background:#1a0a0a;border:1px solid #ff4466;border-radius:8px;' +
+      'padding:12px 16px;margin-bottom:16px;font-size:0.8rem;line-height:1.6;' +
+      'white-space:pre-wrap;cursor:pointer';
+    b.title = 'Click to dismiss';
+    b.onclick = () => b.remove();
+    document.body.insertBefore(b, document.getElementById('botCards'));
+  }
+  b.style.borderColor = col || '#ff4466';
+  b.style.color = col || '#ff8888';
+  b.textContent = msg + '\n\n(click to dismiss)';
+  setConnStatus('⚠ error', col || '#ff4466');
+}
+
+// Show the OS Bluetooth picker and connect the chosen device.
+async function addBot() {
+  const btn = document.getElementById('connectBtn');
+
+  // Step 1 — give immediate visual feedback so user knows the click registered
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ …'; }
+  setConnStatus('checking…');
+
+  // Step 2 — pre-flight
+  // file:// origins silently hang Web Bluetooth even with isSecureContext===true.
+  if (location.protocol === 'file:') {
+    if (btn) { btn.disabled = false; btn.textContent = '＋ Connect Blip'; }
+    showBanner(
+      '⚠  Opened as a file — Web Bluetooth is blocked\n\n' +
+      'Brave (and Chrome) silently block Bluetooth on file:// origins.\n' +
+      'You need to serve this page over HTTP. It only takes one command:\n\n' +
+      '  Python 3 (usually already installed):\n' +
+      '    cd to this folder in a terminal, then run:\n' +
+      '    python -m http.server 8080\n' +
+      '    then open  http://localhost:8080/blip_network.html\n\n' +
+      '  No Python? Run:  npx serve .\n' +
+      '  VS Code? Click the "Go Live" button (Live Server extension)'
+    );
+    return;
+  }
+  if (!window.isSecureContext) {
+    if (btn) { btn.disabled = false; btn.textContent = '＋ Connect Blip'; }
+    showBanner(
+      '⚠  Not a secure context — serve over HTTP\n\n' +
+      'Run:  python -m http.server 8080\n' +
+      'Then open  http://localhost:8080/blip_network.html'
+    );
+    return;
+  }
+
+  // Brave-specific: Web Bluetooth is blocked by default as an anti-fingerprinting measure.
+  const isBrave = (navigator.brave && await navigator.brave.isBrave().catch(() => false));
+  if (isBrave) {
+    // Test if Web Bluetooth actually works by checking requestDevice availability
+    // Brave exposes navigator.bluetooth but silently drops requestDevice calls when
+    // shields are up — we can detect this only by trying (and it won't throw, just hangs).
+    // Instead, always show the shields instructions when Brave is detected.
+    if (btn) { btn.disabled = false; btn.textContent = '＋ Connect Blip'; }
+    showBanner(
+      '🦁  Brave detected — Shields are blocking Web Bluetooth\n\n' +
+      'Fix (takes 5 seconds):\n' +
+      '  1. Click the Brave Shields icon (lion) in the address bar\n' +
+      '  2. Set "Block fingerprinting" to  Standard  (or turn Shields off for this page)\n' +
+      '  3. Reload the page and click Connect again\n\n' +
+      'Alternative: open brave://settings/content/bluetooth and allow this origin.\n\n' +
+      'You only need to do this once — Brave remembers per-site.',
+      '#ff8c00'
+    );
+    return;
+  }
+
+  if (!navigator.bluetooth) {
+    if (btn) { btn.disabled = false; btn.textContent = '＋ Connect Blip'; }
+    showBanner(
+      '⚠  Web Bluetooth not available\n\n' +
+      'Supported browsers:\n' +
+      '  • Brave (lower Shields — see above)\n' +
+      '  • Chrome or Edge on desktop / Android\n' +
+      '  • iOS: not supported — use a desktop browser'
+    );
+    return;
+  }
+
+  // Step 3 — open picker
+  if (btn) btn.textContent = '🔵 searching…';
+  setConnStatus('opening picker…');
+
+  let device;
+  try {
+    device = await navigator.bluetooth.requestDevice({
+      acceptAllDevices: true,
+      optionalServices: [NUS_SVC],
+    });
+  } catch(e) {
+    if (btn) { btn.disabled = false; btn.textContent = '＋ Connect Blip'; }
+    if (e.name === 'NotFoundError' || e.name === 'AbortError') {
+      setConnStatus('cancelled');
+      return;
+    }
+    showBanner(
+      '⚠  Bluetooth error: ' + e.name + '\n' + e.message + '\n\n' +
+      'Make sure:\n' +
+      '  • Bluetooth is enabled in your OS settings\n' +
+      '  • Chrome / Edge has permission to use Bluetooth\n' +
+      '  • The Blip is powered on'
+    );
+    return;
+  }
+
+  if (btn) { btn.disabled = false; btn.textContent = '＋ Connect Blip'; }
+  setConnStatus('connecting…');
+  connectDevice(device).catch(e => {
+    showBanner('⚠  Could not connect to ' + (device.name || 'device') + '\n' + e.message);
+  });
+}
+
+async function connectDevice(device) {
+  if (bots.has(device.id)) return;   // already tracked
+
+  const bot = defaultBot(device.id);
+  bot.device = device;
+  bots.set(device.id, bot);
+  renderCards(); renderMap();
+
+  device.addEventListener('gattserverdisconnected', () => dropBot(device.id));
+
+  try {
+    const server  = await device.gatt.connect();
+    const service = await server.getPrimaryService(NUS_SVC);
+    const rxChar  = await service.getCharacteristic(NUS_RX);
+    const txChar  = await service.getCharacteristic(NUS_TX);
+
+    // Store writer
+    bot.rxChar = rxChar;
+
+    // Subscribe to notifications (TX → browser)
+    await txChar.startNotifications();
+    txChar.addEventListener('characteristicvaluechanged', e => {
+      const chunk = new TextDecoder().decode(e.target.value);
+      ingestText(device.id, chunk);
+    });
+
+    bot.connected = true;
+    bot.connectedAt = Date.now();
+    setConnStatus('● ' + (device.name || 'Blip') + ' connected', '#44ff88');
+    addMonitorLine(device.id, `[connected to ${device.name || device.id}]`);
+    pollBot(device.id);
+  } catch(e) {
+    addMonitorLine(device.id, `[GATT connection failed: ${e.name} — ${e.message}]`);
+    showBanner('⚠  GATT connect failed: ' + e.name + '\n' + e.message +
+      '\n\nThe device was found but the NUS service could not be reached.\n' +
+      'Make sure the Blip has the latest firmware flashed.');
+    console.error('BT connectDevice:', e);
+    dropBot(device.id);
+  }
+}
+
+// Manual status request — triggered by the ⟳ button on a bot card.
+async function pollBotNow(portId) {
+  const bot = bots.get(portId);
+  if (!bot?.connected) return;
+  addMonitorLine(portId, '→ status (manual)');
+  bot.pollStart = Date.now();
+  await send(portId, 'status');
+  await sleep(600);
+  await send(portId, 'bonds');
+  await sleep(600);
+  renderCards();
+  renderMap();
+}
+
+async function pollBot(portId) {
+  while (bots.has(portId)) {
+    const bot = bots.get(portId);
+    if (!bot?.connected) break;
+    try {
+      bot.pollStart = Date.now();
+      await send(portId, 'status');
+      await sleep(800);
+      await send(portId, 'bonds');
+      await sleep(800);
+      bot.lastPoll = Date.now();
+      renderCards();
+      renderMap();
+    } catch(e) {}
+    await sleep(30_000);
+  }
+}
+
+async function send(portId, cmd) {
+  const bot = bots.get(portId);
+  if (!bot) return;
+
+  if (bot.connType === 'serial') {
+    if (!bot.port) return;
+    // Chain each write onto the previous — one lock acquire/release per send.
+    bot.writeLock = (bot.writeLock || Promise.resolve()).then(async () => {
+      let writer;
+      try {
+        writer = bot.port.writable.getWriter();
+        await writer.write(new TextEncoder().encode(cmd + '\n'));
+      } catch(e) {
+        addMonitorLine(portId, '[write error: ' + (e.message || e.name) + ']');
+      } finally {
+        try { writer?.releaseLock(); } catch(_) {}
+      }
+    });
+    await bot.writeLock;
+
+  } else if (bot.rxChar) {
+    try {
+      const data = new TextEncoder().encode(cmd + '\n');
+      try { await bot.rxChar.writeValueWithoutResponse(data); }
+      catch(_) { await bot.rxChar.writeValue(new TextEncoder().encode(cmd + '\n')); }
+    } catch(e) {}
+  }
+}
+
+// ── Web Serial (USB) — works on file:// with no server needed ─────────────────
+async function addBotSerial() {
+  if (!navigator.serial) {
+    showBanner('⚠  Web Serial not available\n\nUse Chrome, Edge, or Brave on desktop.\nMake sure the Blip is plugged in via USB.');
+    return;
+  }
+  const btn = document.getElementById('serialBtn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ …'; }
+
+  let port;
+  try {
+    port = await navigator.serial.requestPort();
+    await port.open({ baudRate: 115200 });
+  } catch(e) {
+    if (btn) { btn.disabled = false; btn.textContent = '＋ USB'; }
+    if (e.name !== 'NotFoundError') showBanner('Serial error: ' + e.message);
+    return;
+  }
+
+  if (btn) { btn.disabled = false; btn.textContent = '＋ USB'; }
+  const portId = 'ser_' + Date.now();
+  const bot    = defaultBot(portId);
+  bot.connType = 'serial';
+  bot.port     = port;
+  bot.connected = true;
+  bot.connectedAt = Date.now();
+  bots.set(portId, bot);
+  startSerialIO(bot);
+  renderCards(); renderMap();
+}
+
+async function startSerialIO(bot) {
+  // writeLock: a promise chain that serialises writes so the writable stream
+  // is never held locked between sends (avoids "stream is locked" stalls).
+  bot.writeLock = Promise.resolve();
+
+  // Read loop: raw Uint8Array chunks decoded to text.
+  let reader;
+  try {
+    reader = bot.port.readable.getReader();
+  } catch(e) {
+    addMonitorLine(bot.portId, '[read setup failed: ' + e.message + ']');
+    dropBot(bot.portId); return;
+  }
+  bot.reader = reader;
+
+  const dec = new TextDecoder();
+  (async () => {
+    try {
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        if (!bots.has(bot.portId)) break;
+        ingestText(bot.portId, dec.decode(value, { stream: true }));
+      }
+    } catch(e) {
+      if (bots.has(bot.portId))
+        addMonitorLine(bot.portId, '[read error: ' + (e.message || e.name) + ']');
+    }
+    dropBot(bot.portId);
+  })();
+
+  addMonitorLine(bot.portId, '[USB serial connected — 115200 baud]');
+  setConnStatus('● USB connected', '#44ff88');
+  await sleep(400);
+  pollBot(bot.portId);
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+async function dropBot(portId) {
+  const bot = bots.get(portId);
+  if (!bot) return;
+  bot.connected = false;
+  updateMeshBot(bot);
+  if (bot.connType === 'serial') {
+    try { await bot.reader?.cancel(); } catch(e) {}  // unlocks port.readable
+    await sleep(50);
+    try { await bot.port?.close(); } catch(e) {}
+  }
+  try { bot.device?.gatt?.disconnect(); } catch(e) {}
+  bots.delete(portId);
+  renderCards();
+  renderMap();
+}
+
+// ── Serial line parser ────────────────────────────────────────────────────────
+function ingestText(portId, chunk) {
+  const bot = bots.get(portId);
+  if (!bot) return;
+  bot.lineBuf += chunk;
+  const lines = bot.lineBuf.split('\n');
+  bot.lineBuf = lines.pop();
+  for (const raw of lines) {
+    const clean = raw.replace(/\r/g, '');
+    addMonitorLine(portId, clean);
+    parseLine(portId, clean.trim());
+  }
+}
+
+function parseLine(portId, line) {
+  const bot = bots.get(portId);
+  if (!bot || !line) return;
+  let m;
+  let updated = false;
+
+  // Bot name — appears in both 'status' and 'bonds' headers
+  if ((m = line.match(/^===\s+(.+?)\s+(?:status|—\s*Peer Friendship)/i)))
+    { bot.name = m[1]; updated = true; }
+
+  // Status response header — compute poll latency
+  if (/^===\s+.+\s+status\s+===/i.test(line)) {
+    if (bot.pollStart != null) {
+      bot.pollLatency = Date.now() - bot.pollStart;
+      bot.pollStart = null;
+    }
+  }
+
+  // theme: N  (may be "theme: 10 (mode 1)")
+  if ((m = line.match(/\btheme:\s*(\d+)/)))
+    { bot.theme = +m[1]; updated = true; }
+
+  // quirk: N
+  if ((m = line.match(/\bquirk:\s*(\d+)/)))
+    { bot.quirk = +m[1]; updated = true; }
+
+  // sleeping: yes/no
+  if ((m = line.match(/\bsleeping:\s*(yes|no)/i)))
+    { bot.sleeping = m[1] === 'yes'; updated = true; }
+
+  // voice / accent / posture / sound
+  if ((m = line.match(/voice:\s*(\d+)\(\d+\).*?accent:\s*(\d+).*?posture:\s*(\d+).*?sound:\s*(\d+)/)))
+    { [bot.voice, bot.accent, bot.posture, bot.sound] = [+m[1],+m[2],+m[3],+m[4]]; updated = true; }
+
+  // life stage / day mood
+  if ((m = line.match(/life stage:\s*(\w+).*?day mood:\s*(.+)/i))) {
+    bot.lifeStage = m[1]; bot.dayMood = m[2].trim(); updated = true;
+    if (bot.dayMood && bot.dayMood !== '?') {
+      bot.moodHistory = [bot.dayMood, ...(bot.moodHistory || [])].slice(0, 5);
+    }
+  }
+
+  // bond: N/100 (TierName) | RPS wins: N losses: N streak: ±N
+  if ((m = line.match(/bond:\s*(\d+)\/100\s+\(([^)]+)\).*?RPS wins:\s*(\d+).*?losses:\s*(\d+).*?streak:\s*([+-]?\d+)/i))) {
+    bot.bond = +m[1]; bot.tierName = m[2]; bot.tier = tierFromBond(bot.bond);
+    bot.rpsWins = +m[3]; bot.rpsLosses = +m[4]; bot.rpsStreak = +m[5];
+    bot.bondHistory = [...(bot.bondHistory || []), bot.bond].slice(-20);
+    updated = true;
+  }
+
+  // birthday: Mon D | today (__DATE__): Mon D
+  if ((m = line.match(/birthday:\s*(\w+\s+\d+).*?today[^:]*:\s*(\w+\s+\d+)/i))) {
+    bot.bdayStr  = m[1].trim();
+    bot.todayStr = m[2].trim();
+    bot.isBirthday = (bot.bdayStr === bot.todayStr);
+    updated = true;
+  }
+
+  // battery: N% (from drawBattOverlay / status)
+  if ((m = line.match(/\bbatt(?:ery)?[:\s]+(\d+)%/i)))
+    { bot.battPct = +m[1]; bot.tiredMode = bot.battPct <= 20; updated = true; }
+
+  // boot #N | interactions: N | peers known: N/M
+  if ((m = line.match(/boot #(\d+).*?interactions:\s*(\d+)/i)))
+    { bot.bootCount = +m[1]; bot.interactions = +m[2]; updated = true; }
+  if ((m = line.match(/peers known:\s*(\d+)\//i)))
+    { bot.peerSeen = +m[1] > 0; updated = true; }
+
+  // bonds: Tier: Name  (bond N/100)
+  if ((m = line.match(/^Tier:\s*(.+?)\s*\(bond\s+(\d+)/i)))
+    { bot.tierName = m[1]; bot.bond = +m[2]; bot.tier = tierFromBond(bot.bond); updated = true; }
+
+  // bonds: RPS record : WN LN streak: ±N
+  if ((m = line.match(/^RPS record\s*:\s*W(\d+)\s+L(\d+)\s+streak:\s*([+-]?\d+)/i)))
+    { bot.rpsWins = +m[1]; bot.rpsLosses = +m[2]; bot.rpsStreak = +m[3]; updated = true; }
+
+  // bonds: Peer birthday: Mon D  (or "? 0" = unknown)
+  if ((m = line.match(/^Peer birthday:\s+([A-Za-z]+\s+\d+)/))) {
+    const raw = m[1].trim();
+    if (!raw.startsWith('?')) { bot.peerBdayStr = raw; updated = true; }
+  }
+
+  // Scan log: "Peer: RSSI=-N mood=0x.. ... bday=M/D"
+  // Printed by BotScanCB — real-time proof this bot is talking to a peer RIGHT NOW.
+  if ((m = line.match(/^Peer:\s+RSSI=(-?\d+).*?bday=(\d+)\/(\d+)/))) {
+    bot.peerActiveAt   = Date.now();        // freshness stamp → peer shows as active
+    bot.peerActiveRssi = +m[1];
+    const mo = +m[2], dy = +m[3];
+    if (mo > 0 && dy > 0) { bot.peerBdayStr = numToMonthDay(mo, dy); }
+    updated = true;
+  }
+
+  // status line: "active peer: #N …" or "active peer: none" — polled every 30s,
+  // so this keeps the active-peer state fresh while two bots sit together.
+  if ((m = line.match(/^active peer:\s*#(\d+)/i))) { bot.peerActiveAt = Date.now(); updated = true; }
+  else if (/^active peer:\s*none/i.test(line))     { bot.peerActiveAt = 0;          updated = true; }
+
+  if (updated) onBotUpdated(bot);
+}
+
+// ── Mesh view helpers ─────────────────────────────────────────────────────────
+
+// Merge mesh history + live bots into a unified node list.
+// Returns Map<name, nodeInfo>.
+function allNodes() {
+  const nodes = new Map();
+
+  // 1. Ghost bots from history
+  for (const [name, info] of Object.entries(mesh.bots)) {
+    nodes.set(name, { ...info, name, isLive: false, isBirthday: false });
+  }
+
+  // 2. Override with live data (takes priority)
+  for (const [id, bot] of bots) {
+    if (!bot.name || bot.name.startsWith('Blip-')) continue;
+    nodes.set(bot.name, {
+      name:         bot.name,
+      theme:        bot.theme,
+      bdayStr:      bot.bdayStr,
+      dayMood:      bot.dayMood,
+      lifeStage:    bot.lifeStage,
+      sleeping:     bot.sleeping,
+      bond:         bot.bond,
+      tier:         bot.tier,
+      tierName:     bot.tierName,
+      rpsWins:      bot.rpsWins,
+      rpsLosses:    bot.rpsLosses,
+      rpsStreak:    bot.rpsStreak,
+      bootCount:    bot.bootCount,
+      interactions: bot.interactions,
+      peerSeen:     bot.peerSeen,
+      isBirthday:   bot.isBirthday,
+      lastSeen:     Date.now(),
+      isLive:       true,
+      portId:       id,
+    });
+  }
+
+  // 3. Peers a connected bot is talking to RIGHT NOW → mark active (live) too,
+  //    even though the dashboard isn't directly connected to them.
+  const ACTIVE_PEER_MS = 60000;
+  const now = Date.now();
+  for (const [, bot] of bots) {
+    if (!bot.peerActiveAt || (now - bot.peerActiveAt) > ACTIVE_PEER_MS) continue;
+    // Identify the peer: resolved name if known, else a birthday-tagged label.
+    let label = bot.peerName;
+    if (!label && bot.peerBdayStr) label = 'Blip · ' + bot.peerBdayStr;
+    if (!label) continue;
+    const ex = nodes.get(label);
+    if (ex && ex.isLive) { ex.seenBy = ex.seenBy || bot.name; continue; }  // already directly connected
+    if (ex) {                                  // upgrade a known ghost to active
+      ex.isLive = true; ex.activeViaPeer = true; ex.lastSeen = now; ex.seenBy = bot.name;
+    } else {                                   // never-connected peer — provisional active node
+      nodes.set(label, {
+        name: label, theme: 0, bond: 0, tier: 0, tierName: 'Unknown',
+        sleeping: false, dayMood: '', lifeStage: '',
+        isBirthday: false, isLive: true, activeViaPeer: true,
+        lastSeen: now, seenBy: bot.name,
+      });
+    }
+  }
+
+  return nodes;
+}
+
+// All edges from the mesh store.
+function allEdges() {
+  return Object.values(mesh.edges);
+}
+
+// Peers of a given bot name — returns list of edge summaries.
+function peersOf(name) {
+  const nodes  = allNodes();
+  const result = [];
+  for (const rec of allEdges()) {
+    const { nameLo, nameHi, bondLo, bondHi, lastSeen } = rec;
+    let peerName = null, bond = 0;
+    if (nameLo === name) { peerName = nameHi; bond = bondLo ?? 0; }
+    else if (nameHi === name) { peerName = nameLo; bond = bondHi ?? 0; }
+    if (!peerName) continue;
+    const peerNode = nodes.get(peerName);
+    result.push({
+      peerName,
+      bond,
+      tier: tierFromBond(bond),
+      tierName: TIER_NAMES[tierFromBond(bond)],
+      isLive: peerNode?.isLive ?? false,
+      theme: peerNode?.theme ?? 0,
+      lastSeen,
+    });
+  }
+  return result.sort((a, b) => b.bond - a.bond);
+}
+
+// ── Eye icon SVG ──────────────────────────────────────────────────────────────
+function eyeSVG(themeIdx, size) {
+  const t    = THEMES[Math.min(themeIdx, 11)];
+  const r    = size / 2;
+  const dark = rgb565(t.dark), mid = rgb565(t.mid), brt = rgb565(t.brt);
+  const rO = r * 0.84, rM = r * 0.70, rB = r * 0.63, rP = r * 0.44;
+  const vW = r * 1.48, vH = r * 0.22;
+  const sW = r * 0.55, sH = r * 0.09, sY = -r * 0.30;
+  return `<svg xmlns="http://www.w3.org/2000/svg"
+    width="${size}" height="${size}"
+    viewBox="${-r} ${-r} ${size} ${size}">
+  <circle r="${rO}" fill="${dark}"/>
+  <circle r="${rM}" fill="${mid}"/>
+  <circle r="${rB}" fill="${brt}"/>
+  <circle r="${rP}" fill="#000"/>
+  <rect x="${(-vW/2).toFixed(1)}" y="${(-vH/2).toFixed(1)}"
+        width="${vW.toFixed(1)}" height="${vH.toFixed(1)}"
+        rx="${(vH*0.5).toFixed(1)}" fill="#000"/>
+  <rect x="${(-sW/2).toFixed(1)}" y="${sY.toFixed(1)}"
+        width="${sW.toFixed(1)}" height="${sH.toFixed(1)}"
+        rx="${(sH*0.5).toFixed(1)}" fill="#000"/>
+</svg>`;
+}
+
+// ── Status cards ──────────────────────────────────────────────────────────────
+function renderCards() {
+  const el = document.getElementById('botCards');
+  el.innerHTML = '';
+  updateMonitorSelect();
+
+  if (bots.size === 0) {
+    el.innerHTML = '<div class="empty-hint">No Blips nearby. Plug in via USB or serve over HTTP for Bluetooth.</div>';
+    return;
+  }
+
+  for (const [portId, bot] of bots) {
+    const t        = THEMES[Math.min(bot.theme, 11)];
+    const brtCss   = rgb565(t.brt);
+    const tierCss  = TIER_GLOWS[Math.min(bot.tier, 5)];
+    const bondPct  = bot.bond + '%';
+    const total    = bot.rpsWins + bot.rpsLosses;
+    const winRate  = total > 0 ? Math.round(bot.rpsWins * 100 / total) + '%' : '—';
+    const streakStr = (bot.rpsStreak > 0 ? '+' : '') + bot.rpsStreak;
+
+    // ── Known peers section ─────────────────────────────────────────────────
+    const peers = peersOf(bot.name);
+    let peersHtml = '';
+    if (peers.length > 0) {
+      const entries = peers.map(p => {
+        const pt    = THEMES[Math.min(p.theme, 11)];
+        const pc    = rgb565(pt.brt);
+        const liveLabel = p.isLive
+          ? `<span style="color:#44ff88;font-size:0.6rem">● LIVE</span>`
+          : `<span style="color:var(--muted);font-size:0.6rem">${timeAgo(p.lastSeen)}</span>`;
+        return `<div class="peer-entry">
+          <div style="flex-shrink:0;opacity:${p.isLive?'1':'0.45'}">${eyeSVG(p.theme, 20)}</div>
+          <div class="peer-entry-name ${p.isLive?'peer-live':'peer-ghost'}"
+               style="color:${p.isLive?pc:'inherit'}">${esc(p.peerName)}</div>
+          <div style="font-size:0.62rem;color:${TIER_GLOWS[p.tier]};white-space:nowrap">${p.bond}/100</div>
+          ${liveLabel}
+        </div>`;
+      }).join('');
+      peersHtml = `<div class="peers-section">
+        <div class="peers-heading">Known Peers</div>
+        ${entries}
+      </div>`;
+    }
+
+    const moodColors = { curious:'#5599ff', cheerful:'#ffcc44', grumpy:'#ff6644', anxious:'#cc44ff', calm:'#44ffaa', stoic:'#888888' };
+    const moodChips = (bot.moodHistory || []).slice(0,5).map(m => {
+      const col = moodColors[m?.toLowerCase()] || '#556677';
+      return `<span style="display:inline-block;background:${col}22;color:${col};border:1px solid ${col}44;border-radius:3px;font-size:0.58rem;padding:1px 5px;margin-right:2px;letter-spacing:0.5px">${esc(m)}</span>`;
+    }).join('');
+
+    const card = document.createElement('div');
+    card.className = 'bot-card';
+    card.style.borderColor = brtCss + '55';
+    card.innerHTML = `
+      <div style="position:absolute;top:10px;right:10px;display:flex;gap:6px">
+        <button class="remove-btn" style="position:static" onclick="pollBotNow('${esc(portId)}')" title="Request status now">⟳</button>
+        <button class="remove-btn" style="position:static" onclick="dropBot('${esc(portId)}')">✕</button>
+      </div>
+      <div class="bot-card-header">
+        <div style="flex-shrink:0" class="${bot.connected && (Date.now() - bot.lastPoll) < 35000 ? 'eye-live' : ''}">${eyeSVG(bot.theme, 44)}</div>
+        <div style="overflow:hidden">
+          <div class="bot-name" style="color:${brtCss}">${esc(bot.name)}</div>
+          <div class="bot-substatus">
+            ${bot.sleeping ? '💤 sleeping' : esc(bot.dayMood) + ' · ' + esc(bot.lifeStage)}
+            &nbsp;${bot.connType === 'ble' ? signalDots(bot.pollLatency) : '<span style="font-size:0.6rem;color:var(--muted)">USB</span>'}
+          </div>
+          ${moodChips ? `<div style="margin-top:4px;margin-bottom:2px">${moodChips}</div>` : ''}
+          <div style="font-size:0.6rem;color:var(--muted);margin-top:2px">connected ${timeAgo(bot.connectedAt)}</div>
+        </div>
+      </div>
+      <div class="stat-row"><span class="label">Friendship</span>
+        <span class="value" style="color:${tierCss}">${esc(bot.tierName)}</span></div>
+      <div class="stat-row"><span class="label">Bond</span>
+        <span class="value">${bot.bond}/100 <button class="remove-btn" style="position:static;padding:0 3px;font-size:0.6rem" onclick="copyText('${bot.bond}/100')" title="Copy">⎘</button></span></div>
+      <div class="bond-bar">
+        <div class="bond-fill" style="width:${bondPct};background:${brtCss}"></div>
+      </div>
+      ${sparkline(bot.bondHistory, brtCss)}
+      <div class="stat-row"><span class="label">RPS</span>
+        <span class="value">W${bot.rpsWins} L${bot.rpsLosses} (${winRate})</span></div>
+      <div class="stat-row"><span class="label">Streak</span>
+        <span class="value" style="color:${bot.rpsStreak>0?'#44ff88':bot.rpsStreak<0?'#ff4466':''}">${streakStr}</span></div>
+      <div class="stat-row"><span class="label">Birthday</span>
+        <span class="value">${esc(bot.bdayStr) || '—'}${bot.bdayStr ? ` <button class="remove-btn" style="position:static;padding:0 3px;font-size:0.6rem" onclick="copyText('${esc(bot.bdayStr)}')" title="Copy">⎘</button>` : ''}</span></div>
+      <div class="stat-row"><span class="label">Boot / Iact</span>
+        <span class="value">#${bot.bootCount} / ${bot.interactions} <button class="remove-btn" style="position:static;padding:0 3px;font-size:0.6rem" onclick="copyText('#${bot.bootCount} / ${bot.interactions}')" title="Copy">⎘</button></span></div>
+      <div class="stat-row"><span class="label">Theme / Sound</span>
+        <span class="value">${esc(t.name)} · ${soundName(bot.sound)}</span></div>
+      ${bot.quirk != null ? `<div class="stat-row"><span class="label">Quirk</span><span class="value">${quirkName(bot.quirk)}</span></div>` : ''}
+      ${bot.battPct != null && bot.battPct < 100 ? `<div class="stat-row"><span class="label">Battery</span><span class="value" style="color:${bot.battPct > 30 ? '#44ff88' : '#ff4466'}">${bot.battPct}%${bot.tiredMode ? ' 😴 tired' : ''}</span></div>` : ''}
+      ${bot.isBirthday ? '<div class="birthday-badge">🎂 BIRTHDAY TODAY!</div>' : ''}
+      ${peersHtml}
+    `;
+    el.appendChild(card);
+  }
+}
+
+// ── Friendship map ────────────────────────────────────────────────────────────
+function renderMap() {
+  const edgeLayer = document.getElementById('edgeLayer');
+  const nodeLayer = document.getElementById('nodeLayer');
+  const emptyMsg  = document.getElementById('mapEmpty');
+  const hintMsg   = document.getElementById('mapHint');
+  edgeLayer.innerHTML = '';
+  nodeLayer.innerHTML = '';
+
+  const nodes = [...allNodes().values()];
+  const edges = allEdges();
+  const N = nodes.length;
+
+  const cntEl = document.getElementById('meshCount');
+  if (N > 0) {
+    const live  = nodes.filter(n => n.isLive).length;
+    const ghost = N - live;
+    const K = edges.length;
+    cntEl.textContent = `(${live} live${ghost > 0 ? ' · ' + ghost + ' offline' : ''}${K > 0 ? ' · ' + K + ' connection' + (K !== 1 ? 's' : '') : ''})`;
+  } else {
+    cntEl.textContent = '';
+  }
+
+  if (N === 0) {
+    emptyMsg.style.display = '';
+    hintMsg.style.display  = '';
+    return;
+  }
+  emptyMsg.style.display = 'none';
+  hintMsg.style.display  = 'none';
+
+  // ── Node positions: circle layout ─────────────────────────────────────────
+  const W = 900, H = 540, cx = W / 2, cy = H / 2;
+  const R      = N === 1 ? 0 : Math.min(200, 90 + N * 30);
+  const NODE_R = 46;
+
+  // Build a position map: name → {x, y, node}
+  const posMap = new Map();
+  nodes.forEach((node, i) => {
+    const angle = (2 * Math.PI * i / N) - Math.PI / 2;
+    posMap.set(node.name, {
+      x: N === 1 ? cx : cx + R * Math.cos(angle),
+      y: N === 1 ? cy : cy + R * Math.sin(angle),
+      node,
+    });
+  });
+
+  // ── Edges from mesh store ─────────────────────────────────────────────────
+  for (const rec of edges) {
+    const posA = posMap.get(rec.nameLo);
+    const posB = posMap.get(rec.nameHi);
+    if (!posA || !posB) continue;
+
+    // Average known bond values
+    const vals = [rec.bondLo, rec.bondHi].filter(v => v != null && v > 0);
+    if (!vals.length) continue;
+    const bond = Math.round(vals.reduce((s, v) => s + v, 0) / vals.length);
+    if (bond < 5) continue;
+
+    const tier    = tierFromBond(bond);
+    const stroke  = TIER_GLOWS[tier];
+    const strokeW = Math.max(1.5, bond / 12);
+    // Ghost edges (both offline) are dimmer
+    const bothLive = posA.node.isLive && posB.node.isLive;
+    const opacity  = (0.35 + tier * 0.12) * (bothLive ? 1.0 : 0.40);
+
+    const line = svgEl('line', {
+      x1: posA.x, y1: posA.y, x2: posB.x, y2: posB.y,
+      stroke,
+      'stroke-width': strokeW.toFixed(1),
+      'stroke-linecap': 'round',
+      opacity: opacity.toFixed(2),
+    });
+    // Dashed line for fully-offline edges
+    if (!bothLive) line.setAttribute('stroke-dasharray', '6 4');
+    edgeLayer.appendChild(line);
+
+    const mx = (posA.x + posB.x) / 2, my = (posA.y + posB.y) / 2;
+    const tierLbl = svgEl('text', { x: mx, y: my - 9, class: 'edge-tier-label' });
+    tierLbl.textContent = TIER_NAMES[tier] + ' · ' + bond;
+    if (!bothLive) tierLbl.setAttribute('opacity', '0.5');
+    edgeLayer.appendChild(tierLbl);
+
+    // Show per-directional bonds if they differ meaningfully
+    const blo = rec.bondLo ?? 0, bhi = rec.bondHi ?? 0;
+    if (blo > 0 && bhi > 0 && Math.abs(blo - bhi) > 2) {
+      const bondLbl = svgEl('text', { x: mx, y: my + 14, class: 'edge-bond-label' });
+      bondLbl.textContent =
+        `${rec.nameLo.split(/[\s\-_]/)[0]}:${blo}  ${rec.nameHi.split(/[\s\-_]/)[0]}:${bhi}`;
+      edgeLayer.appendChild(bondLbl);
+    }
+  }
+
+  // ── Nodes ─────────────────────────────────────────────────────────────────
+  for (const [, { x, y, node }] of posMap) {
+    const t       = THEMES[Math.min(node.theme, 11)];
+    const darkCss = rgb565(t.dark);
+    const midCss  = rgb565(t.mid);
+    const brtCss  = rgb565(t.brt);
+    const alpha   = node.isLive ? 1.0 : 0.30;
+
+    const g = svgEl('g', {
+      transform: `translate(${x.toFixed(1)},${y.toFixed(1)})`,
+      style: `cursor:pointer;opacity:${alpha}`,
+    });
+
+    // Outer atmospheric glow
+    g.appendChild(svgEl('circle', { r: NODE_R + 10, fill: darkCss, opacity: '0.45' }));
+
+    // Eye rings
+    for (const [r, fill] of [
+      [NODE_R,        midCss],
+      [NODE_R * 0.74, brtCss],
+      [NODE_R * 0.50, '#000'],
+    ]) {
+      g.appendChild(svgEl('circle', { r: r.toFixed(1), fill }));
+    }
+
+    // Visor mask
+    const vW = NODE_R * 1.50, vH = NODE_R * 0.22;
+    g.appendChild(svgEl('rect', {
+      x: (-vW/2).toFixed(1), y: (-vH/2).toFixed(1),
+      width: vW.toFixed(1),  height: vH.toFixed(1),
+      rx: (vH/2).toFixed(1), fill: '#000',
+    }));
+
+    // Upper slit
+    const sW = NODE_R * 0.58, sH = NODE_R * 0.09, sY = -NODE_R * 0.30;
+    g.appendChild(svgEl('rect', {
+      x: (-sW/2).toFixed(1), y: sY.toFixed(1),
+      width: sW.toFixed(1),  height: sH.toFixed(1),
+      rx: (sH/2).toFixed(1), fill: '#000',
+    }));
+
+    // Sleeping: drooped visor overlay
+    if (node.sleeping) {
+      g.appendChild(svgEl('rect', {
+        x: (-vW/2).toFixed(1), y: (-NODE_R * 0.05).toFixed(1),
+        width: vW.toFixed(1),  height: (NODE_R * 0.55).toFixed(1),
+        rx: (vH/2).toFixed(1), fill: '#000', opacity: '0.72',
+      }));
+    }
+
+    // Dashed ring for offline nodes
+    if (!node.isLive) {
+      const dash = svgEl('circle', { r: (NODE_R + 5).toFixed(1), fill: 'none', stroke: '#334455', 'stroke-width': '1.5' });
+      dash.setAttribute('stroke-dasharray', '5 4');
+      g.appendChild(dash);
+    }
+
+    // Live indicator dot (top-right): green = directly connected,
+    // amber = active via a peer the dashboard is connected to.
+    if (node.isLive) {
+      g.appendChild(svgEl('circle', {
+        cx: (NODE_R * 0.70).toFixed(1),
+        cy: (-NODE_R * 0.65).toFixed(1),
+        r: '5', fill: node.activeViaPeer ? '#ffaa33' : '#44ff88',
+      }));
+    }
+
+    // Birthday badge
+    if (node.isBirthday) {
+      const badge = svgEl('text', {
+        x: (NODE_R * 0.68).toFixed(1),
+        y: (-NODE_R * 0.72).toFixed(1),
+        'font-size': '18',
+        'text-anchor': 'middle',
+        'dominant-baseline': 'middle',
+      });
+      badge.textContent = '🎂';
+      g.appendChild(badge);
+    }
+
+    // Bot name
+    const nameEl = svgEl('text', {
+      y: (NODE_R + 16).toFixed(1),
+      class: 'node-name',
+      fill: brtCss,
+    });
+    nameEl.textContent = node.name;
+    g.appendChild(nameEl);
+
+    // Mood / tier / offline timestamp
+    const moodEl = svgEl('text', {
+      y: (NODE_R + 30).toFixed(1),
+      class: 'node-mood',
+    });
+    if (node.activeViaPeer) {
+      moodEl.textContent = '↔ active · via ' + (node.seenBy || 'peer');
+    } else if (node.isLive) {
+      moodEl.textContent = node.sleeping ? 'zzz' : (node.dayMood + ' · ' + node.tierName);
+    } else {
+      moodEl.textContent = 'offline · ' + timeAgo(node.lastSeen);
+    }
+    g.appendChild(moodEl);
+
+    // Hover tooltip
+    g.addEventListener('mouseenter', (e) => showTip(e, node));
+    g.addEventListener('mousemove',  (e) => moveTip(e));
+    g.addEventListener('mouseleave', hideTip);
+
+    nodeLayer.appendChild(g);
+  }
+}
+
+// ── Tooltip ───────────────────────────────────────────────────────────────────
+const tip = document.getElementById('tooltip');
+
+function showTip(e, node) {
+  const t      = THEMES[Math.min(node.theme, 11)];
+  const brtCss = rgb565(t.brt);
+  const total  = (node.rpsWins ?? 0) + (node.rpsLosses ?? 0);
+  const wr     = total > 0 ? Math.round((node.rpsWins ?? 0) * 100 / total) + '%' : '—';
+  const peers  = peersOf(node.name);
+  const peerStr = peers.length
+    ? peers.map(p => `${esc(p.peerName)} (${p.bond}/100)`).join(', ')
+    : 'none on record';
+  const liveTag = node.isLive
+    ? '<span style="color:#44ff88">● live</span>'
+    : `<span style="color:#334">offline ${timeAgo(node.lastSeen)}</span>`;
+  tip.innerHTML = `
+    <b style="color:${brtCss}">${esc(node.name)}</b> ${liveTag}<br>
+    Theme  : ${esc(t.name)}<br>
+    Stage  : ${esc(node.lifeStage)} · ${esc(node.dayMood)}<br>
+    Bond   : ${node.bond}/100 — ${esc(node.tierName)}<br>
+    RPS    : W${node.rpsWins??0} L${node.rpsLosses??0} (${wr})  streak ${(node.rpsStreak??0)>0?'+':''}${node.rpsStreak??0}<br>
+    Boots  : #${node.bootCount??0}  Iact: ${node.interactions??0}<br>
+    B-day  : ${esc(node.bdayStr) || '?'}  ${node.isBirthday ? '🎂 TODAY!' : ''}<br>
+    ${node.moodHistory?.length ? `Moods  : ${node.moodHistory.slice(0,3).map(m => esc(m)).join(' → ')}<br>` : ''}Peers  : ${peerStr}
+  `.trim();
+  tip.style.display = 'block';
+  moveTip(e);
+}
+function moveTip(e) {
+  tip.style.left = (e.clientX + 14) + 'px';
+  tip.style.top  = (e.clientY - 10) + 'px';
+}
+function hideTip() { tip.style.display = 'none'; }
+
+// ── Utility helpers ───────────────────────────────────────────────────────────
+
+function sparkline(history, color) {
+  if (!history || history.length < 2) return '';
+  const w = 60, h = 16, pad = 1;
+  const min = Math.min(...history), max = Math.max(...history);
+  const range = Math.max(max - min, 1);
+  const pts = history.map((v, i) => {
+    const x = pad + (i / (history.length - 1)) * (w - pad * 2);
+    const y = h - pad - ((v - min) / range) * (h - pad * 2);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(' ');
+  return `<svg width="${w}" height="${h}" style="display:block;margin-top:4px">` +
+    `<polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linejoin="round" opacity="0.7"/>` +
+    `<circle cx="${parseFloat(pts.split(' ').pop().split(',')[0])}" cy="${parseFloat(pts.split(' ').pop().split(',')[1])}" r="2" fill="${color}"/>` +
+    `</svg>`;
+}
+
+function signalDots(latency) {
+  if (latency == null) return '';
+  const bars = latency <= 300 ? 5 : latency <= 800 ? 4 : latency <= 1500 ? 3 : latency <= 3000 ? 2 : 1;
+  const col  = latency <= 500 ? '#44ff88' : latency <= 2000 ? '#ffcc44' : '#ff4466';
+  const dots = '●'.repeat(bars) + '○'.repeat(5 - bars);
+  return `<span style="color:${col};font-size:0.62rem;letter-spacing:-1px" title="Poll latency: ${latency}ms">${dots}</span>`;
+}
+
+async function copyText(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch(e) {
+    // Fallback for file:// or non-secure contexts
+    const el = document.createElement('textarea');
+    el.value = text; el.style.position = 'fixed'; el.style.opacity = '0';
+    document.body.appendChild(el); el.select();
+    try { document.execCommand('copy'); } catch(_) {}
+    document.body.removeChild(el);
+    return true;
+  }
+}
+
+function svgEl(tag, attrs) {
+  const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+  return el;
+}
+function esc(s) {
+  return String(s ?? '')
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function soundName(s) {
+  return ['Melodic','Chirpy','Droning','Soft','Distorted'][Math.min(s ?? 0, 4)] || '?';
+}
+function quirkName(q) {
+  return ['None','Twitchy','Restless','Glitchy','Dramatic','Paranoid',
+          'Sleepy','Hyper','Shy','Lovesick','Sun','Moon','Heartbeat','Sneeze'][q] || '?';
+}
+function timeAgo(ts) {
+  if (!ts) return '';
+  const s = Math.round((Date.now() - ts) / 1000);
+  if (s < 60)   return s + 's ago';
+  const m = Math.round(s / 60);
+  if (m < 60)   return m + 'm ago';
+  const h = Math.round(m / 60);
+  if (h < 24)   return h + 'h ago';
+  return Math.round(h / 24) + 'd ago';
+}
+
+// ── Serial Monitor ────────────────────────────────────────────────────────────
+const MAX_MON_LINES = 1000;
+
+function addMonitorLine(portId, raw) {
+  if (!raw.trim()) return;
+  const bot   = bots.get(portId);
+  const name  = bot?.name ?? portId;
+  const t     = THEMES[Math.min(bot?.theme ?? 0, 11)];
+  const color = rgb565(t.brt);
+  const now   = new Date();
+  const ts    = now.toTimeString().slice(0, 8);
+
+  const out = document.getElementById('monitorOutput');
+  if (!out) return;
+  const ph = out.querySelector('.mon-empty');
+  if (ph) out.removeChild(ph);
+
+  const div = document.createElement('div');
+  div.innerHTML = `<span style="color:#2a3a4a">${ts}</span> <span style="color:${color};font-weight:bold">[${esc(name)}]</span> ${esc(raw)}`;
+  out.appendChild(div);
+  while (out.children.length > MAX_MON_LINES) out.removeChild(out.firstChild);
+
+  const cnt = document.getElementById('monitorLineCount');
+  if (cnt) cnt.textContent = out.children.length + ' lines';
+
+  const as = document.getElementById('autoScroll');
+  if (as?.checked) out.scrollTop = out.scrollHeight;
+}
+
+function clearMonitor() {
+  const out = document.getElementById('monitorOutput');
+  if (out) out.innerHTML = '<div class="mon-empty">Cleared.</div>';
+  const cnt = document.getElementById('monitorLineCount');
+  if (cnt) cnt.textContent = '';
+}
+
+async function sendMonitorCmd() {
+  const inp = document.getElementById('monitorCmd');
+  const sel = document.getElementById('monitorTarget');
+  const cmd = inp?.value.trim();
+  if (!cmd) return;
+
+  const targetId   = sel?.value ?? '__all__';
+  const targetName = targetId === '__all__' ? 'ALL'
+    : (bots.get(targetId)?.name ?? targetId);
+
+  if (targetId === '__all__') {
+    for (const [portId] of bots) await send(portId, cmd);
+  } else {
+    await send(targetId, cmd);
+  }
+
+  // Echo sent command into monitor
+  const out = document.getElementById('monitorOutput');
+  if (out) {
+    const ph = out.querySelector('.mon-empty');
+    if (ph) out.removeChild(ph);
+    const div = document.createElement('div');
+    div.innerHTML = `<span style="color:#2a3a4a">${new Date().toTimeString().slice(0,8)}</span> <span style="color:#556677">→ [${esc(targetName)}]</span> <span style="color:#8899aa">${esc(cmd)}</span>`;
+    out.appendChild(div);
+    const as = document.getElementById('autoScroll');
+    if (as?.checked) out.scrollTop = out.scrollHeight;
+    const cnt = document.getElementById('monitorLineCount');
+    if (cnt) cnt.textContent = out.children.length + ' lines';
+  }
+  inp.value = '';
+}
+
+function updateMonitorSelect() {
+  // Update both the monitor target select and the config target select
+  for (const selId of ['monitorTarget', 'cfgTarget']) {
+    const sel = document.getElementById(selId);
+    if (!sel) continue;
+    const cur = sel.value;
+    const isMonitor = (selId === 'monitorTarget');
+    sel.innerHTML = isMonitor
+      ? '<option value="__all__">— all connected —</option>'
+      : '<option value="__none__">— select a connected Blip —</option>';
+    for (const [portId, bot] of bots) {
+      const opt = document.createElement('option');
+      opt.value = portId;
+      opt.textContent = bot.name;
+      sel.appendChild(opt);
+    }
+    if ([...sel.options].some(o => o.value === cur)) sel.value = cur;
+  }
+}
+
+// ── Config panel ──────────────────────────────────────────────────────────────
+// Map dropdown IDs to `set <key> <value>` firmware commands
+const CFG_MAP = {
+  cfgTheme:  'theme',
+  cfgQuirk:  'quirk',
+  cfgPers:   'pers',
+  cfgExt:    'ext',
+  cfgTalk:   'talk',
+  cfgVoice:  'voice',
+  cfgAccent: 'accent',
+  cfgSound:  'sound',
+};
+
+function cfgSetStatus(msg, err = false) {
+  const el = document.getElementById('cfgStatus');
+  if (el) { el.textContent = msg; el.style.color = err ? '#ff4466' : 'var(--muted)'; }
+}
+
+// Send a one-off command to the selected config target (upright/quirk buttons).
+async function cfgSend(cmd) {
+  const targetId = document.getElementById('cfgTarget')?.value;
+  if (!targetId || targetId === '__none__') { cfgSetStatus('select a Blip first', true); return; }
+  if (!bots.has(targetId)) { cfgSetStatus('Blip disconnected', true); return; }
+  await send(targetId, cmd);
+  addMonitorLine(targetId, '→ ' + cmd);
+  cfgSetStatus('sent: ' + cmd);
+}
+
+async function cfgApply() {
+  const targetId = document.getElementById('cfgTarget')?.value;
+  if (!targetId || targetId === '__none__') { cfgSetStatus('select a Blip first', true); return; }
+  if (!bots.has(targetId)) { cfgSetStatus('Blip disconnected', true); return; }
+
+  const cmds = [];
+
+  // Name
+  const nameVal = document.getElementById('cfgName')?.value.trim();
+  if (nameVal) cmds.push(`set name ${nameVal}`);
+
+  // Dropdowns
+  for (const [elId, key] of Object.entries(CFG_MAP)) {
+    const el = document.getElementById(elId);
+    if (el && el.value !== '') cmds.push(`set ${key} ${el.value}`);
+  }
+
+  if (cmds.length === 0) { cfgSetStatus('nothing to send'); return; }
+
+  cfgSetStatus('sending…');
+  for (const cmd of cmds) {
+    await send(targetId, cmd);
+    await sleep(300);   // give the bot time between commands
+  }
+  cfgSetStatus(`sent ${cmds.length} command${cmds.length > 1 ? 's' : ''} ✓`);
+  // Trigger a status refresh so cards update
+  await sleep(500);
+  await send(targetId, 'status');
+}
+
+async function cfgRead() {
+  const targetId = document.getElementById('cfgTarget')?.value;
+  if (!targetId || targetId === '__none__') { cfgSetStatus('select a Blip first', true); return; }
+  cfgSetStatus('reading…');
+  await send(targetId, 'status');
+  cfgSetStatus('status requested — values below will update');
+}
+
+// When a bot's parsed state updates, reflect it in the config panel if that bot is selected
+function cfgSyncFromBot(bot) {
+  const targetId = document.getElementById('cfgTarget')?.value;
+  if (!targetId || targetId !== bot.portId) return;
+
+  const nameEl = document.getElementById('cfgName');
+  if (nameEl && bot.name && !bot.name.startsWith('Blip-')) nameEl.value = bot.name;
+
+  const themeEl = document.getElementById('cfgTheme');
+  if (themeEl && bot.theme != null) themeEl.value = String(bot.theme);
+
+  const quirkEl = document.getElementById('cfgQuirk');
+  if (quirkEl && bot.quirk != null) quirkEl.value = String(bot.quirk);
+
+  const voiceEl = document.getElementById('cfgVoice');
+  if (voiceEl && bot.voice != null) voiceEl.value = String(bot.voice);
+
+  const accentEl = document.getElementById('cfgAccent');
+  if (accentEl && bot.accent != null) accentEl.value = String(bot.accent);
+
+  const soundEl = document.getElementById('cfgSound');
+  if (soundEl && bot.sound != null) soundEl.value = String(bot.sound);
+}
+
+// ── Poll-status ticker ────────────────────────────────────────────────────────
+setInterval(() => {
+  const el = document.getElementById('pollStatus');
+  if (bots.size === 0) { el.textContent = ''; return; }
+  const ages = [...bots.values()].map(b =>
+    b.lastPoll ? Math.round((Date.now() - b.lastPoll) / 1000) + 's ago' : 'polling…'
+  );
+  el.textContent = 'polled ' + ages.join(' · ');
+  // Refresh ghost timestamps in the map
+  renderMap();
+}, 5000);
+
+// Initial render + auto-reconnect to any previously paired ShoulderBots
+renderCards();
+renderMap();
+
+// Show whether the page is in a secure context (required for Web Bluetooth)
+(async function checkContext() {
+  const badge = document.getElementById('ctxBadge');
+  if (!badge) return;
+
+  if (location.protocol === 'file:') {
+    badge.textContent = '⚠ file:// — must serve over HTTP';
+    badge.style.color = '#ff4466';
+    return;
+  }
+
+  if (!window.isSecureContext) {
+    badge.textContent = '⚠ not secure — click for help';
+    badge.style.color = '#ff4466';
+    return;
+  }
+
+  const isBrave = (navigator.brave && await navigator.brave.isBrave().catch(() => false));
+  if (isBrave) {
+    badge.textContent = '🦁 Brave — lower Shields to use Bluetooth';
+    badge.style.color = '#ff8c00';
+    // Don't auto-reconnect — it would also be blocked
+    return;
+  }
+
+  if (!navigator.bluetooth) {
+    badge.textContent = '⚠ no Bluetooth API';
+    badge.style.color = '#ff4466';
+    return;
+  }
+
+  badge.textContent = '✓ ready';
+  badge.style.color = '#44ff88';
+  badge.style.cursor = 'default';
+  badge.onclick = null;
+  autoReconnect();
+})();
+
+function showServeHelp() {
+  alert('This page must be served over HTTP — not opened as a file.\n\n' +
+    'Quickest options:\n\n' +
+    '  Python 3:   cd to this folder, then run:\n' +
+    '              python -m http.server 8080\n' +
+    '              Open  http://localhost:8080\n\n' +
+    '  Node/npx:   npx serve .\n' +
+    '              Open the printed URL\n\n' +
+    '  VS Code:    Install "Live Server" extension → click Go Live button\n\n' +
+    'After that, Bluetooth will work normally.');
+}
+
+// Enter key sends command from monitor input
+document.getElementById('monitorCmd')?.addEventListener('keydown', e => {
+  if (e.key === 'Enter') sendMonitorCmd();
+});
+
+// ── Keyboard shortcuts ────────────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  // Escape always clears the monitorCmd input regardless of other modifier keys
+  if (e.key === 'Escape' && document.getElementById('monitorCmd') === document.activeElement) {
+    document.getElementById('monitorCmd').value = '';
+    return;
+  }
+  // Don't steal keys when user is typing in an input/textarea
+  const tag = document.activeElement?.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+  if (!e.ctrlKey && !e.metaKey) return;
+  const sel = document.getElementById('monitorTarget');
+  const target = sel?.value || '__all__';
+  if (e.key === 's' || e.key === 'S') { e.preventDefault(); send(target === '__all__' ? [...bots.keys()][0] : target, 'status'); addMonitorLine(target, '→ status (shortcut)'); }
+  if (e.key === 'b' || e.key === 'B') { e.preventDefault(); send(target === '__all__' ? [...bots.keys()][0] : target, 'bonds');  addMonitorLine(target, '→ bonds (shortcut)'); }
+  if (e.key === 'h' || e.key === 'H') { e.preventDefault(); send(target === '__all__' ? [...bots.keys()][0] : target, 'help');   addMonitorLine(target, '→ help (shortcut)'); }
+});
+</script>
+</body>
+</html>
